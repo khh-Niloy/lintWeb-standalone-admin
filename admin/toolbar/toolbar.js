@@ -471,7 +471,6 @@ class AdminToolbar {
                         attributes: el.attributes
                     })),
                     url: window.location.pathname,
-                    batchMode: elementsToEdit.length > 1
                 })
             });
             
@@ -496,6 +495,8 @@ class AdminToolbar {
     
     async sendToBackend(prompt, elementsToEdit = null) {
         const elements = elementsToEdit || this.selectedElements;
+        const isBatchMode = elements.length > 1;
+        
         try {
             const response = await fetch('/api/admin-edit', {
                 method: 'POST',
@@ -510,12 +511,25 @@ class AdminToolbar {
                         originalText: el.originalText,
                         attributes: el.attributes
                     })),
-                    url: window.location.pathname
+                    url: window.location.pathname,
+                    batchMode: isBatchMode
                 })
             });
             
+            console.log('response', response);
+            
+            // Check if response is OK
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                // Try to parse error response
+                let errorMessage = `HTTP error! status: ${response.status}`;
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.error || errorMessage;
+                } catch (e) {
+                    // If we can't parse JSON, use the status text
+                    errorMessage = response.statusText || errorMessage;
+                }
+                throw new Error(errorMessage);
             }
             
             return await response.json();

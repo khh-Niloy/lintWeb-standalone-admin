@@ -23,7 +23,8 @@ def load_admin_template() -> str:
         return ""
 
 
-ADMIN_INJECT = load_admin_template()
+# Load template dynamically in development mode instead of caching
+ADMIN_INJECT = load_admin_template() if not app.debug else ""
 
 
 def is_admin_route(path: str) -> bool:
@@ -34,15 +35,21 @@ def is_admin_route(path: str) -> bool:
 
 
 def inject_admin_toolbar(html_content: str, admin: bool) -> str:
-    if not admin or not ADMIN_INJECT:
+    if not admin:
+        return html_content
+    
+    # Load template dynamically in debug mode for hot reloading
+    admin_inject = ADMIN_INJECT if not app.debug else load_admin_template()
+    
+    if not admin_inject:
         return html_content
     if "Admin Toolbar Injection Template" in html_content:
         return html_content
     if "</body>" in html_content:
-        return html_content.replace("</body>", f"{ADMIN_INJECT}</body>")
+        return html_content.replace("</body>", f"{admin_inject}</body>")
     if "</html>" in html_content:
-        return html_content.replace("</html>", f"{ADMIN_INJECT}</html>")
-    return html_content + ADMIN_INJECT
+        return html_content.replace("</html>", f"{admin_inject}</html>")
+    return html_content + admin_inject
 
 
 def safe_join_projects(path_fragment: str) -> Path:
@@ -120,6 +127,8 @@ def admin_edit():
         url = data.get("url", "")
         batch_mode = data.get("batchMode", False)
         
+        logger.info(f"Received admin-edit request: prompt={prompt[:50]}..., elements={len(elements)}, url={url}, batch_mode={batch_mode}")
+        
         if not prompt or not elements or not url:
             return jsonify({"success": False, "error": "Missing prompt, elements, or url"}), 400
         
@@ -148,52 +157,79 @@ def admin_edit():
         if not html_file_path.exists():
             return jsonify({"success": False, "error": f"HTML file not found: {target_file}"}), 404
         
-        # Generate optimized prompt for Claude
-        claude_prompt = generate_claude_edit_prompt(elements, prompt, target_file, batch_mode)
+        # Generate optimized prompt for Qwen Code CLI with batch editing support
+        qwen_prompt = generate_qwen_edit_prompt(elements, prompt, target_file, batch_mode)
         
-        # Execute Claude Code CLI
+        # Log the prompt for debugging
+        logger.info(f"Sending prompt to Qwen: {qwen_prompt[:200]}...")
+        
+        # Check if Qwen CLI is available
+        import shutil
+        if not shutil.which("qwen"):
+            logger.error("Qwen CLI not found in PATH")
+            return jsonify({"success": False, "error": "Qwen CLI not found. Please install Qwen CLI and ensure it's in your PATH."}), 500
+        
+        # Execute Qwen Code CLI with optimized parameters
         import subprocess
         import json as json_lib
         
-        result = subprocess.run([
-            "claude", "-p",
-            "--max-turns", "5",
-            "--dangerously-skip-permissions",
-            claude_prompt
-        ], cwd=str(project_path), capture_output=True, text=True, timeout=60)
+        logger.info(f"Executing Qwen CLI with cwd: {project_path}")
+        logger.info(f"Prompt length: {len(qwen_prompt)} characters")
+        
+        try:
+            result = subprocess.run([
+                "qwen", "-m", "qwen-30b", "-p", "-y"
+            ], input=qwen_prompt, cwd=str(project_path), capture_output=True, text=True, timeout=60)
+        except subprocess.TimeoutExpired:
+            logger.error("Qwen CLI timeout")
+            return jsonify({"success": False, "error": "AI processing timeout"}), 500
+        except Exception as e:
+            logger.exception("Qwen CLI execution error")
+            return jsonify({"success": False, "error": f"AI processing failed: {str(e)}"}), 500
+        
+        logger.info(f"Qwen CLI result: returncode={result.returncode}, stdout={result.stdout[:200]}..., stderr={result.stderr[:200]}...")
         
         if result.returncode == 0:
             try:
                 # Try to parse JSON response
                 response_data = json_lib.loads(result.stdout)
-                return jsonify({
-                    "success": True, 
-                    "message": "AI changes applied successfully",
-                    "claude_response": response_data
-                })
+                if response_data.get("status") == "success":
+                    return jsonify({
+                        "success": True, 
+                        "message": response_data.get("message", "AI changes applied successfully"),
+                        "qwen_response": response_data
+                    })
+                else:
+                    return jsonify({
+                        "success": False, 
+                        "error": response_data.get("message", "AI processing failed"),
+                        "qwen_response": response_data
+                    }), 500
             except json_lib.JSONDecodeError:
                 # Fallback for non-JSON response
+                logger.warning("Qwen returned non-JSON response")
                 return jsonify({
                     "success": True,
                     "message": "AI changes applied successfully", 
-                    "claude_output": result.stdout[:500]
+                    "qwen_output": result.stdout[:500]
                 })
         else:
-            logger.error(f"Claude CLI error: {result.stderr}")
+            logger.error(f"Qwen CLI error: {result.stderr}")
+            # Provide more detailed error information
+            error_msg = result.stderr[:500] if result.stderr else "Unknown error occurred"
             return jsonify({
                 "success": False, 
-                "error": f"AI processing failed: {result.stderr[:200]}"
+                "error": f"AI processing failed: {error_msg}",
+                "qwen_error": result.stderr[:1000]  # Include more detailed error info
             }), 500
             
-    except subprocess.TimeoutExpired:
-        return jsonify({"success": False, "error": "AI processing timeout"}), 500
     except Exception as e:
         logger.exception("admin_edit error")
         return jsonify({"success": False, "error": f"Internal error: {str(e)[:200]}"}), 500
 
 
-def generate_claude_edit_prompt(elements, user_request, target_file, batch_mode=False):
-    """Generate optimized prompt for Claude Code CLI with batch editing support"""
+def generate_qwen_edit_prompt(elements, user_request, target_file, batch_mode=False):
+    """Generate optimized prompt for Qwen Code CLI with batch editing support"""
     
     # Format selected elements with detailed context
     element_details = []
@@ -214,7 +250,7 @@ Element {i+1}:
 BATCH MODE: You are editing {len(elements)} elements simultaneously. Apply the user's request consistently to ALL selected elements. Make similar changes to each element while respecting their individual context and content.
 """
     
-    return f"""You are helping edit a website HTML file. The user has selected specific elements and wants to make changes.
+    return f"""You are an AI assistant specialized in editing HTML files. The user has selected specific elements in a webpage and wants to make changes to them.
 
 TARGET FILE: {target_file}
 
@@ -225,19 +261,25 @@ USER REQUEST: {user_request}
 {batch_instruction}
 INSTRUCTIONS:
 1. Read the current {target_file} file to understand the full context
-2. Modify the selected elements or their children according to the user's request
+2. Modify only the selected elements or their children according to the user's request
 3. PRESERVE all existing CSS classes, IDs, and styling attributes unless changes require styling modifications
 4. When adding new elements, match existing design patterns and styling
 5. For batch operations, apply changes consistently across all selected elements
 6. Save the modified content back to {target_file}
+7. Respond in valid JSON format with the following structure:
+   {{
+     "status": "success" or "error",
+     "message": "Description of what was done or what went wrong",
+     "details": "Any additional information"
+   }}
 
 CRITICAL: Make intelligent changes that fulfill the user's request. If they want shape changes, modify the appropriate CSS classes. If they want new content, add it in the right location.
 
-Please read the file, make the requested changes, and save it back."""
+Please read the file, make the requested changes, and save it back. Respond ONLY in valid JSON format as specified above. You are using the qwen-turbo model, which is optimized for speed and efficiency."""
 
 
-def generate_element_selector_for_claude(element):
-    """Generate CSS selector for element that Claude can use to identify changes"""
+def generate_element_selector_for_qwen(element):
+    """Generate CSS selector for element that Qwen can use to identify changes"""
     selector = element.get('tag', 'div')
     
     if element.get('id'):

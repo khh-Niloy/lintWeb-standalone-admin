@@ -1,6 +1,262 @@
 <!-- Admin Toolbar Injection Template -->
 <!-- This script is injected when accessing /admin routes -->
 <script>
+
+// Authentication Modal
+function showAuthModal() {
+    // Create modal overlay
+    const modalOverlay = document.createElement('div');
+    modalOverlay.id = 'admin-auth-modal';
+    modalOverlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(10px);
+        z-index: 999999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.3s ease-out;
+    `;
+    
+    // Create modal content
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+        background: white;
+        border-radius: 12px;
+        padding: 40px;
+        width: 400px;
+        max-width: 90vw;
+        box-shadow: 
+            0 25px 50px rgba(0, 0, 0, 0.3),
+            0 0 0 1px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        transform: scale(0.9);
+        animation: scaleIn 0.3s ease-out 0.1s forwards;
+        color: #333;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    `;
+    
+    modalContent.innerHTML = `
+        <div style="margin-bottom: 30px;">
+            <div style="font-size: 48px; margin-bottom: 15px;">🔐</div>
+            <h2 style="margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; color: #333;">Admin Access</h2>
+            <p style="margin: 10px 0 0 0; opacity: 0.7; font-size: 16px; color: #666;">Enter your credentials to continue</p>
+        </div>
+        
+        <form id="admin-auth-form" style="display: flex; flex-direction: column; gap: 20px;">
+            <div style="position: relative;">
+                <input 
+                    type="text" 
+                    id="admin-username" 
+                    placeholder="Username"
+                    style="
+                        width: 100%;
+                        padding: 16px 20px;
+                        border: 1px solid #e0e0e0;
+                        border-radius: 8px;
+                        background: white;
+                        color: #333;
+                        font-size: 16px;
+                        font-weight: 400;
+                        outline: none;
+                        transition: all 0.3s ease;
+                        box-sizing: border-box;
+                    "
+                    onfocus="this.style.borderColor='#333'; this.style.boxShadow='0 0 0 3px rgba(0, 0, 0, 0.1)'"
+                    onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'"
+                />
+            </div>
+            
+            <div style="position: relative;">
+                <input 
+                    type="password" 
+                    id="admin-password" 
+                    placeholder="Password"
+                    style="
+                        width: 100%;
+                        padding: 16px 50px 16px 20px;
+                        border: 1px solid #e0e0e0;
+                        border-radius: 8px;
+                        background: white;
+                        color: #333;
+                        font-size: 16px;
+                        font-weight: 400;
+                        outline: none;
+                        transition: all 0.3s ease;
+                        box-sizing: border-box;
+                    "
+                    onfocus="this.style.borderColor='#333'; this.style.boxShadow='0 0 0 3px rgba(0, 0, 0, 0.1)'"
+                    onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'"
+                />
+                <button 
+                    type="button"
+                    id="toggle-password"
+                    style="
+                        position: absolute;
+                        right: 15px;
+                        top: 50%;
+                        transform: translateY(-50%);
+                        background: none;
+                        border: none;
+                        cursor: pointer;
+                        color: #666;
+                        padding: 5px;
+                        transition: color 0.2s ease;
+                        width: 24px;
+                        height: 24px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                    "
+                    onmouseover="this.style.color='#333'"
+                    onmouseout="this.style.color='#666'"
+                    onclick="togglePasswordVisibility()"
+                >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <button 
+                type="submit"
+                style="
+                    width: 100%;
+                    padding: 16px 20px;
+                    border: none;
+                    border-radius: 8px;
+                    background: #333;
+                    color: white;
+                    font-size: 16px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    letter-spacing: 0.5px;
+                "
+                onmouseover="this.style.background='#000'; this.style.transform='translateY(-2px)'"
+                onmouseout="this.style.background='#333'; this.style.transform='translateY(0)'"
+            >
+                Access Admin Panel
+            </button>
+        </form>
+        
+        <div id="auth-error" style="
+            margin-top: 20px; 
+            padding: 12px; 
+            background: #fee; 
+            border-radius: 8px; 
+            color: #c33; 
+            font-size: 14px;
+            display: none;
+            border: 1px solid #fcc;
+        "></div>
+    `;
+    
+    modalOverlay.appendChild(modalContent);
+    document.body.appendChild(modalOverlay);
+    
+    // Add CSS animations
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        input::placeholder {
+            color: #999;
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // Password toggle function
+    window.togglePasswordVisibility = function() {
+        const passwordField = document.getElementById('admin-password');
+        const toggleButton = document.getElementById('toggle-password');
+        
+        if (passwordField.type === 'password') {
+            passwordField.type = 'text';
+            // Eye with slash (hidden)
+            toggleButton.innerHTML = `
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                </svg>
+            `;
+        } else {
+            passwordField.type = 'password';
+            // Eye (visible)
+            toggleButton.innerHTML = `
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                </svg>
+            `;
+        }
+    };
+    
+    // Handle form submission
+    document.getElementById('admin-auth-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const username = document.getElementById('admin-username').value;
+        const password = document.getElementById('admin-password').value;
+        const errorDiv = document.getElementById('auth-error');
+        
+        if (username === 'admin' && password === 'admin123') {
+            // Success - remove modal, set authentication flag, and continue loading
+            modalOverlay.remove();
+            window.isAuthenticated = true;
+            
+            // Show edit button instantly if it already exists
+            const existingEditButton = document.getElementById('admin-toolbar-button');
+            if (existingEditButton) {
+                existingEditButton.style.display = 'flex';
+                existingEditButton.style.opacity = '1';
+                existingEditButton.style.pointerEvents = 'auto';
+            }
+            
+            loadAdminToolbar();
+        } else {
+            // Show error
+            errorDiv.style.display = 'block';
+            errorDiv.textContent = '❌ Invalid credentials. Please try again.';
+            
+            // Shake animation
+            modalContent.style.animation = 'shake 0.5s ease-in-out';
+            setTimeout(() => {
+                modalContent.style.animation = '';
+            }, 500);
+        }
+    });
+    
+    // Add shake animation
+    const shakeStyle = document.createElement('style');
+    shakeStyle.textContent = `
+        @keyframes shake {
+            0%, 100% { transform: translateX(0) scale(1); }
+            25% { transform: translateX(-10px) scale(1); }
+            75% { transform: translateX(10px) scale(1); }
+        }
+    `;
+    document.head.appendChild(shakeStyle);
+    
+    // Focus on username field
+    setTimeout(() => {
+        document.getElementById('admin-username').focus();
+    }, 400);
+}
+
+// Initialize authentication state
+window.isAuthenticated = false;
+
 // Check if we're in admin mode based on URL
 const isAdminMode = window.location.pathname.includes('/admin') || window.location.search.includes('admin=true');
 
@@ -8,6 +264,9 @@ if (isAdminMode) {
     console.log('🔧 Admin mode detected - initializing toolbar...');
     console.log('🔍 Current URL:', window.location.href);
     console.log('🔍 Pathname:', window.location.pathname);
+    
+    // Show authentication modal first
+    showAuthModal();
     
     // Load the admin toolbar
     const loadAdminToolbar = () => {
@@ -52,7 +311,7 @@ if (isAdminMode) {
                     bottom: 20px;
                     right: 20px;
                     z-index: 99999;
-                    display: flex;
+                    display: ${window.isAuthenticated ? 'flex' : 'none'};
                     align-items: center;
                     background: #161616;
                     color: white;
@@ -69,8 +328,8 @@ if (isAdminMode) {
                     font-size: 16px;
                     cursor: pointer;
                     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                    opacity: 1;
-                    pointer-events: auto;
+                    opacity: ${window.isAuthenticated ? 1 : 0};
+                    pointer-events: ${window.isAuthenticated ? 'auto' : 'none'};
                 `;
                 
                 
@@ -103,6 +362,12 @@ if (isAdminMode) {
                 document.body.appendChild(adminButton);
                 console.log('✅ Admin button added successfully');
                 
+                // Show admin button if authenticated
+                if (window.isAuthenticated) {
+                    adminButton.style.display = 'flex';
+                    adminButton.style.opacity = '1';
+                    adminButton.style.pointerEvents = 'auto';
+                }
                 
                 // Show welcome message
                 setTimeout(() => {

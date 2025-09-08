@@ -203,9 +203,9 @@ function showAuthModal() {
         }
     };
     
-    // Success Animation Function
+    // Success Animation Function - Fast and smooth
     function showSuccessAnimation(callback) {
-        // Create success overlay
+        // Create simple success overlay
         const successOverlay = document.createElement('div');
         successOverlay.style.cssText = `
             position: fixed;
@@ -218,184 +218,68 @@ function showAuthModal() {
             display: flex;
             align-items: center;
             justify-content: center;
-            flex-direction: column;
             opacity: 0;
-            animation: successFadeIn 0.5s ease-out forwards;
+            animation: quickFadeIn 0.2s ease-out forwards;
         `;
         
-        // Create success content
+        // Create simple success content
         const successContent = document.createElement('div');
         successContent.style.cssText = `
             text-align: center;
             color: white;
-            transform: scale(0.5);
-            animation: successPop 0.6s ease-out 0.2s forwards;
+            transform: scale(0.8);
+            animation: quickPop 0.3s ease-out 0.1s forwards;
         `;
         
         successContent.innerHTML = `
             <div style="
-                width: 120px;
-                height: 120px;
-                border: 4px solid white;
+                width: 80px;
+                height: 80px;
+                border: 3px solid white;
                 border-radius: 50%;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                margin: 0 auto 30px;
-                position: relative;
-                animation: checkmarkDraw 0.8s ease-out 0.5s forwards;
+                margin: 0 auto 20px;
             ">
-                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" style="opacity: 0; animation: checkmarkShow 0.3s ease-out 0.8s forwards;">
-                    <path d="M20 6L9 17l-5-5" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" 
-                          stroke-dasharray="30" stroke-dashoffset="30" 
-                          style="animation: drawCheckmark 0.5s ease-out 1s forwards;"/>
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+                    <path d="M20 6L9 17l-5-5" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
             </div>
-            
-            <h2 style="
-                margin: 0 0 15px 0;
-                font-size: 36px;
-                font-weight: 700;
-                letter-spacing: -0.5px;
-                opacity: 0;
-                animation: textSlideUp 0.4s ease-out 1.2s forwards;
-            ">Welcome!</h2>
-            
-            <p style="
-                margin: 0;
-                font-size: 18px;
-                opacity: 0.9;
-                font-weight: 500;
-                opacity: 0;
-                animation: textSlideUp 0.4s ease-out 1.4s forwards;
-            ">Authentication successful</p>
-            
-            <div style="
-                margin-top: 30px;
-                display: flex;
-                gap: 8px;
-                justify-content: center;
-                opacity: 0;
-                animation: dotsShow 0.4s ease-out 1.6s forwards;
-            ">
-                <div style="width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.7); animation: dotPulse 1.2s infinite 0s;"></div>
-                <div style="width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.7); animation: dotPulse 1.2s infinite 0.2s;"></div>
-                <div style="width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.7); animation: dotPulse 1.2s infinite 0.4s;"></div>
-            </div>
+            <h2 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600;">Success!</h2>
+            <p style="margin: 0; font-size: 14px; opacity: 0.9;">Logging you in...</p>
         `;
         
         successOverlay.appendChild(successContent);
         document.body.appendChild(successOverlay);
         
-        // Create particle effects
-        createParticleEffect(successOverlay);
-        
-        // Add success animations CSS
+        // Add simple animations CSS
         const successStyle = document.createElement('style');
         successStyle.textContent = `
-            @keyframes successFadeIn {
+            @keyframes quickFadeIn {
                 from { opacity: 0; }
                 to { opacity: 1; }
             }
-            
-            @keyframes successPop {
-                from { transform: scale(0.5); opacity: 0; }
+            @keyframes quickPop {
+                from { transform: scale(0.8); opacity: 0; }
                 to { transform: scale(1); opacity: 1; }
             }
-            
-            @keyframes checkmarkDraw {
-                from { 
-                    transform: scale(0.8); 
-                    box-shadow: 0 0 0 0 rgba(255,255,255,0.3);
-                }
-                to { 
-                    transform: scale(1); 
-                    box-shadow: 0 0 0 20px rgba(255,255,255,0);
-                }
-            }
-            
-            @keyframes checkmarkShow {
-                from { opacity: 0; transform: scale(0.5); }
-                to { opacity: 1; transform: scale(1); }
-            }
-            
-            @keyframes drawCheckmark {
-                from { stroke-dashoffset: 30; }
-                to { stroke-dashoffset: 0; }
-            }
-            
-            @keyframes textSlideUp {
-                from { opacity: 0; transform: translateY(20px); }
-                to { opacity: 1; transform: translateY(0); }
-            }
-            
-            @keyframes dotsShow {
-                from { opacity: 0; transform: translateY(10px); }
-                to { opacity: 1; transform: translateY(0); }
-            }
-            
-            @keyframes dotPulse {
-                0%, 100% { transform: scale(1); opacity: 0.7; }
-                50% { transform: scale(1.2); opacity: 1; }
-            }
-            
-            @keyframes particleFloat {
-                0% { 
-                    transform: translateY(100vh) scale(0); 
-                    opacity: 0; 
-                }
-                10% { 
-                    opacity: 1; 
-                }
-                90% { 
-                    opacity: 1; 
-                }
-                100% { 
-                    transform: translateY(-100px) scale(1); 
-                    opacity: 0; 
-                }
-            }
-            
-            @keyframes successSlideOut {
-                from { 
-                    opacity: 1; 
-                    transform: scale(1); 
-                }
-                to { 
-                    opacity: 0; 
-                    transform: scale(1.1); 
-                }
+            @keyframes quickFadeOut {
+                from { opacity: 1; }
+                to { opacity: 0; }
             }
         `;
         document.head.appendChild(successStyle);
         
-        // Remove animation after 3 seconds and call callback
+        // Remove animation after 0.8 seconds total
         setTimeout(() => {
-            successOverlay.style.animation = 'successSlideOut 0.5s ease-out forwards';
+            successOverlay.style.animation = 'quickFadeOut 0.2s ease-out forwards';
             setTimeout(() => {
                 successOverlay.remove();
                 successStyle.remove();
                 callback();
-            }, 500);
-        }, 2500);
-    }
-    
-    // Create floating particles effect
-    function createParticleEffect(container) {
-        for (let i = 0; i < 20; i++) {
-            const particle = document.createElement('div');
-            particle.style.cssText = `
-                position: absolute;
-                width: ${Math.random() * 6 + 2}px;
-                height: ${Math.random() * 6 + 2}px;
-                background: white;
-                border-radius: 50%;
-                left: ${Math.random() * 100}%;
-                animation: particleFloat ${Math.random() * 3 + 2}s ease-out ${Math.random() * 2}s infinite;
-                opacity: 0.7;
-            `;
-            container.appendChild(particle);
-        }
+            }, 200);
+        }, 600);
     }
     
     // Handle form submission

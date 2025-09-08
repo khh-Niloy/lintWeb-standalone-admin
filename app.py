@@ -1,6 +1,8 @@
 import os
 import mimetypes
 import logging
+import subprocess
+import json
 from pathlib import Path
 from datetime import datetime
 from flask import Flask, send_from_directory, request, jsonify
@@ -59,6 +61,135 @@ def safe_join_projects(path_fragment: str) -> Path:
     return candidate
 
 
+def get_next_version_tag():
+    """Get the next version tag (v1, v2, v3, etc.)"""
+    try:
+        result = subprocess.run(['git', 'tag', '--list'], capture_output=True, text=True, timeout=10)
+        if result.returncode != 0:
+            return "v1"  # First tag
+        
+        tags = result.stdout.strip().split('\n') if result.stdout.strip() else []
+        version_numbers = []
+        
+        for tag in tags:
+            if tag.startswith('v') and tag[1:].isdigit():
+                version_numbers.append(int(tag[1:]))
+        
+        if not version_numbers:
+            return "v1"
+        
+        return f"v{max(version_numbers) + 1}"
+    except Exception as e:
+        logger.error(f"Error getting next version tag: {e}")
+        return "v1"
+
+
+def commit_and_tag_changes(description: str):
+    """Commit changes and create version tag following git.txt instructions"""
+    try:
+        # Ensure we're on git-integration branch
+        subprocess.run(['git', 'checkout', 'git-integration'], capture_output=True, text=True, timeout=10)
+        
+        # Stage all changes
+        result = subprocess.run(['git', 'add', '.'], capture_output=True, text=True, timeout=10)
+        if result.returncode != 0:
+            logger.error(f"Git add failed: {result.stderr}")
+            return False, f"Git add failed: {result.stderr}"
+        
+        # Get next version tag
+        next_tag = get_next_version_tag()
+        
+        # Commit changes
+        commit_message = f"AI Edit: {description}"
+        result = subprocess.run(['git', 'commit', '-m', commit_message], capture_output=True, text=True, timeout=15)
+        if result.returncode != 0:
+            if "nothing to commit" in result.stdout:
+                return True, "No changes to commit"
+            logger.error(f"Git commit failed: {result.stderr}")
+            return False, f"Git commit failed: {result.stderr}"
+        
+        # Create version tag
+        result = subprocess.run(['git', 'tag', next_tag], capture_output=True, text=True, timeout=10)
+        if result.returncode != 0:
+            logger.error(f"Git tag failed: {result.stderr}")
+            return False, f"Git tag failed: {result.stderr}"
+        
+        # Push to origin with tags
+        result = subprocess.run(['git', 'push', 'origin', 'git-integration', '--tags'], capture_output=True, text=True, timeout=30)
+        if result.returncode != 0:
+            logger.warning(f"Git push failed: {result.stderr}")
+            # Continue even if push fails (might be network issue)
+        
+        return True, f"Successfully committed and tagged as {next_tag}"
+    except Exception as e:
+        logger.error(f"Error in commit_and_tag_changes: {e}")
+        return False, f"Git operation failed: {str(e)}"
+
+
+def get_version_history():
+    """Get list of version tags with commit info"""
+    try:
+        # Get all tags
+        result = subprocess.run(['git', 'tag', '--list'], capture_output=True, text=True, timeout=10)
+        if result.returncode != 0:
+            return []
+        
+        tags = result.stdout.strip().split('\n') if result.stdout.strip() else []
+        version_tags = [tag for tag in tags if tag.startswith('v') and tag[1:].isdigit()]
+        version_tags.sort(key=lambda x: int(x[1:]), reverse=True)  # Sort by version number, newest first
+        
+        history = []
+        for tag in version_tags:
+            # Get commit info for tag
+            result = subprocess.run([
+                'git', 'log', '--format=%H|%s|%ai', '-1', tag
+            ], capture_output=True, text=True, timeout=10)
+            
+            if result.returncode == 0 and result.stdout.strip():
+                commit_hash, message, date = result.stdout.strip().split('|', 2)
+                history.append({
+                    'tag': tag,
+                    'message': message,
+                    'date': date,
+                    'hash': commit_hash[:8]
+                })
+        
+        return history
+    except Exception as e:
+        logger.error(f"Error getting version history: {e}")
+        return []
+
+
+def rollback_to_version(tag: str):
+    """Rollback to specific version tag following git.txt instructions"""
+    try:
+        # Ensure we're on git-integration branch
+        subprocess.run(['git', 'checkout', 'git-integration'], capture_output=True, text=True, timeout=10)
+        
+        # Verify tag exists
+        result = subprocess.run(['git', 'tag', '--list', tag], capture_output=True, text=True, timeout=10)
+        if result.returncode != 0 or not result.stdout.strip():
+            return False, f"Tag {tag} not found"
+        
+        # Reset branch to desired version tag
+        result = subprocess.run(['git', 'reset', '--hard', tag], capture_output=True, text=True, timeout=15)
+        if result.returncode != 0:
+            logger.error(f"Git reset failed: {result.stderr}")
+            return False, f"Git reset failed: {result.stderr}"
+        
+        # Force push to origin
+        result = subprocess.run(['git', 'push', 'origin', 'git-integration', '--force'], capture_output=True, text=True, timeout=30)
+        if result.returncode != 0:
+            logger.warning(f"Git push failed: {result.stderr}")
+            # Continue even if push fails
+        
+        return True, f"Successfully rolled back to {tag}"
+    except Exception as e:
+        logger.error(f"Error in rollback_to_version: {e}")
+        return False, f"Rollback failed: {str(e)}"
+
+
+
 @app.route("/health")
 def health():
     return jsonify({"status": "healthy"}), 200
@@ -111,7 +242,19 @@ def direct_text_edit():
                 return jsonify({"success": False, "error": "originalText required for replacement"}), 400
 
         html_file_path.write_text(updated, encoding="utf-8")
-        return jsonify({"success": True, "message": f"Updated {html_file_path.name}", "file_path": str(html_file_path)})
+        
+        # Commit and tag changes
+        git_success, git_message = commit_and_tag_changes(f"Direct text edit in {html_file_path.name}")
+        
+        response = {
+            "success": True, 
+            "message": f"Updated {html_file_path.name}", 
+            "file_path": str(html_file_path),
+            "git_status": git_success,
+            "git_message": git_message
+        }
+        
+        return jsonify(response)
 
     except Exception as e:
         logger.exception("direct_text_edit error")
@@ -194,11 +337,18 @@ def admin_edit():
                 # Try to parse JSON response
                 response_data = json_lib.loads(result.stdout)
                 if response_data.get("status") == "success":
-                    return jsonify({
+                    # Commit and tag changes after successful AI edit
+                    git_success, git_message = commit_and_tag_changes(f"AI edit: {prompt[:50]}...")
+                    
+                    response = {
                         "success": True, 
                         "message": response_data.get("message", "AI changes applied successfully"),
-                        "qwen_response": response_data
-                    })
+                        "qwen_response": response_data,
+                        "git_status": git_success,
+                        "git_message": git_message
+                    }
+                    
+                    return jsonify(response)
                 else:
                     return jsonify({
                         "success": False, 
@@ -208,11 +358,19 @@ def admin_edit():
             except json_lib.JSONDecodeError:
                 # Fallback for non-JSON response
                 logger.warning("Qwen returned non-JSON response")
-                return jsonify({
+                
+                # Commit and tag changes after successful AI edit
+                git_success, git_message = commit_and_tag_changes(f"AI edit: {prompt[:50]}...")
+                
+                response = {
                     "success": True,
                     "message": "AI changes applied successfully", 
-                    "qwen_output": result.stdout[:500]
-                })
+                    "qwen_output": result.stdout[:500],
+                    "git_status": git_success,
+                    "git_message": git_message
+                }
+                
+                return jsonify(response)
         else:
             logger.error(f"Qwen CLI error: {result.stderr}")
             # Provide more detailed error information
@@ -226,6 +384,43 @@ def admin_edit():
     except Exception as e:
         logger.exception("admin_edit error")
         return jsonify({"success": False, "error": f"Internal error: {str(e)[:200]}"}), 500
+
+
+@app.route("/api/version-history", methods=["GET"])
+def version_history():
+    """Get version history for the admin UI"""
+    try:
+        history = get_version_history()
+        return jsonify({"success": True, "history": history})
+    except Exception as e:
+        logger.exception("version_history error")
+        return jsonify({"success": False, "error": f"Failed to get version history: {str(e)}"}), 500
+
+
+@app.route("/api/rollback", methods=["POST"])
+def rollback():
+    """Rollback to a specific version tag"""
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        tag = data.get("tag", "").strip()
+        
+        if not tag:
+            return jsonify({"success": False, "error": "Missing tag parameter"}), 400
+        
+        if not tag.startswith('v') or not tag[1:].isdigit():
+            return jsonify({"success": False, "error": "Invalid tag format. Expected format: v1, v2, v3, etc."}), 400
+        
+        rollback_success, rollback_message = rollback_to_version(tag)
+        
+        return jsonify({
+            "success": rollback_success,
+            "message": rollback_message,
+            "rolledback_to": tag if rollback_success else None
+        })
+        
+    except Exception as e:
+        logger.exception("rollback error")
+        return jsonify({"success": False, "error": f"Rollback failed: {str(e)}"}), 500
 
 
 def generate_qwen_edit_prompt(elements, user_request, target_file, batch_mode=False):

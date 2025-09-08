@@ -411,18 +411,9 @@ function showAuthModal() {
                 modalOverlay.remove();
                 window.isAuthenticated = true;
                 
-                // Show edit button and version controls instantly if they already exist
-                const existingEditButton = document.getElementById('admin-toolbar-button');
-                const existingVersionDropdown = document.getElementById('version-history-dropdown');
-                if (existingEditButton) {
-                    existingEditButton.style.display = 'flex';
-                    existingEditButton.style.opacity = '1';
-                    existingEditButton.style.pointerEvents = 'auto';
-                }
-                if (existingVersionDropdown) {
-                    existingVersionDropdown.style.display = 'flex';
-                    existingVersionDropdown.style.opacity = '1';
-                    existingVersionDropdown.style.pointerEvents = 'auto';
+                // Show admin UI elements if they exist
+                if (window.showAdminUI) {
+                    window.showAdminUI();
                 }
                 
                 loadAdminToolbar();
@@ -468,9 +459,6 @@ if (isAdminMode) {
     console.log('🔍 Current URL:', window.location.href);
     console.log('🔍 Pathname:', window.location.pathname);
     
-    // Show authentication modal first
-    showAuthModal();
-    
     // Load the admin toolbar
     const loadAdminToolbar = () => {
         console.log('📥 Loading admin toolbar script...');
@@ -514,7 +502,7 @@ if (isAdminMode) {
                     bottom: 90px;
                     right: 20px;
                     z-index: 99999;
-                    display: ${window.isAuthenticated ? 'flex' : 'none'};
+                    display: flex;
                     align-items: center;
                     background: #161616;
                     color: white;
@@ -559,7 +547,7 @@ if (isAdminMode) {
                     bottom: 20px;
                     right: 20px;
                     z-index: 99999;
-                    display: ${window.isAuthenticated ? 'flex' : 'none'};
+                    display: flex;
                     align-items: center;
                     gap: 10px;
                     opacity: ${window.isAuthenticated ? 1 : 0};
@@ -639,23 +627,30 @@ if (isAdminMode) {
                 }
                 
                 // Handle version selection change
-                document.getElementById('version-select').addEventListener('change', function() {
-                    const selectedTag = this.value;
-                    const rollbackBtn = document.getElementById('rollback-button');
-                    
-                    if (selectedTag) {
-                        rollbackBtn.disabled = false;
-                        rollbackBtn.style.opacity = '1';
-                        rollbackBtn.style.cursor = 'pointer';
-                    } else {
-                        rollbackBtn.disabled = true;
-                        rollbackBtn.style.opacity = '0.6';
-                        rollbackBtn.style.cursor = 'not-allowed';
-                    }
-                });
+                const versionSelect = document.getElementById('version-select');
+                if (versionSelect) {
+                    versionSelect.addEventListener('change', function() {
+                        const selectedTag = this.value;
+                        const rollbackBtn = document.getElementById('rollback-button');
+                        
+                        if (rollbackBtn) {
+                            if (selectedTag) {
+                                rollbackBtn.disabled = false;
+                                rollbackBtn.style.opacity = '1';
+                                rollbackBtn.style.cursor = 'pointer';
+                            } else {
+                                rollbackBtn.disabled = true;
+                                rollbackBtn.style.opacity = '0.6';
+                                rollbackBtn.style.cursor = 'not-allowed';
+                            }
+                        }
+                    });
+                }
                 
                 // Handle rollback button click
-                document.getElementById('rollback-button').addEventListener('click', async function() {
+                const rollbackBtnElement = document.getElementById('rollback-button');
+                if (rollbackBtnElement) {
+                    rollbackBtnElement.addEventListener('click', async function() {
                     const selectedTag = document.getElementById('version-select').value;
                     
                     if (!selectedTag) return;
@@ -691,7 +686,8 @@ if (isAdminMode) {
                         this.disabled = false;
                         this.innerHTML = '↺ Rollback';
                     }
-                });
+                    });
+                }
                 
                 console.log('➕ Adding admin button to page...');
                 document.body.appendChild(adminButton);
@@ -701,14 +697,19 @@ if (isAdminMode) {
                 // Load version history
                 loadVersionHistory();
                 
-                // Show admin button and version controls if authenticated
-                if (window.isAuthenticated) {
-                    adminButton.style.display = 'flex';
+                // Function to show admin UI elements
+                window.showAdminUI = function() {
+                    console.log('🔧 Showing admin UI elements...');
                     adminButton.style.opacity = '1';
                     adminButton.style.pointerEvents = 'auto';
-                    versionDropdown.style.display = 'flex';
                     versionDropdown.style.opacity = '1';
                     versionDropdown.style.pointerEvents = 'auto';
+                    console.log('✅ Admin UI elements are now visible');
+                };
+                
+                // Show admin button and version controls if authenticated
+                if (window.isAuthenticated) {
+                    window.showAdminUI();
                 }
                 
                 // Show welcome message
@@ -729,6 +730,9 @@ if (isAdminMode) {
         console.log('📤 Appending toolbar script to head...');
         document.head.appendChild(toolbarScript);
     };
+    
+    // Show authentication modal first
+    showAuthModal();
     
     // Load when DOM is ready
     if (document.readyState === 'loading') {

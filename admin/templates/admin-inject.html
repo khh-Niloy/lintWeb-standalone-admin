@@ -454,13 +454,8 @@ window.isAuthenticated = false;
 // Check if we're in admin mode based on URL
 const isAdminMode = window.location.pathname.includes('/admin') || window.location.search.includes('admin=true');
 
-if (isAdminMode) {
-    console.log('🔧 Admin mode detected - initializing toolbar...');
-    console.log('🔍 Current URL:', window.location.href);
-    console.log('🔍 Pathname:', window.location.pathname);
-    
-    // Load the admin toolbar
-    const loadAdminToolbar = () => {
+// Load the admin toolbar function (define before using)
+const loadAdminToolbar = () => {
         console.log('📥 Loading admin toolbar script...');
         
         // Load toolbar CSS and JS with cache busting
@@ -729,7 +724,12 @@ if (isAdminMode) {
         
         console.log('📤 Appending toolbar script to head...');
         document.head.appendChild(toolbarScript);
-    };
+};
+
+if (isAdminMode) {
+    console.log('🔧 Admin mode detected - initializing toolbar...');
+    console.log('🔍 Current URL:', window.location.href);
+    console.log('🔍 Pathname:', window.location.pathname);
     
     // Show authentication modal first
     showAuthModal();

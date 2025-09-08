@@ -213,7 +213,7 @@ function showAuthModal() {
             left: 0;
             right: 0;
             bottom: 0;
-            background: linear-gradient(135deg, #10b981, #059669);
+            background: #F3F4F6;
             z-index: 1000000;
             display: flex;
             align-items: center;
@@ -226,7 +226,7 @@ function showAuthModal() {
         const successContent = document.createElement('div');
         successContent.style.cssText = `
             text-align: center;
-            color: white;
+            color: black;
             transform: scale(0.8);
             animation: quickPop 0.3s ease-out 0.1s forwards;
         `;
@@ -235,7 +235,7 @@ function showAuthModal() {
             <div style="
                 width: 80px;
                 height: 80px;
-                border: 3px solid white;
+                border: 3px solid black;
                 border-radius: 50%;
                 display: flex;
                 align-items: center;
@@ -243,11 +243,11 @@ function showAuthModal() {
                 margin: 0 auto 20px;
             ">
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
-                    <path d="M20 6L9 17l-5-5" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M20 6L9 17l-5-5" stroke="black" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
             </div>
-            <h2 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600;">Success!</h2>
-            <p style="margin: 0; font-size: 14px; opacity: 0.9;">Logging you in...</p>
+            <h2 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: black;">Success!</h2>
+            <p style="margin: 0; font-size: 14px; color: black; opacity: 0.7;">Logging you in...</p>
         `;
         
         successOverlay.appendChild(successContent);

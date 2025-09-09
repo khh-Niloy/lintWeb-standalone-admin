@@ -16,55 +16,29 @@ PROJECTS_DIR = Path(os.getenv("PROJECTS_DIR", BASE_DIR / "projects")).resolve()
 app = Flask(__name__)
 
 
-def load_admin_template() -> str:
-    template_path = BASE_DIR / "admin" / "templates" / "admin-inject.html"
-    try:
-        return template_path.read_text(encoding="utf-8")
-    except Exception as e:
-        logger.warning(f"Admin template not found or failed to read: {e}")
-        return ""
+
+@app.route("/health")
+def health():
+    return jsonify({"status": "healthy"}), 200
 
 
-# Load template dynamically in development mode instead of caching
-ADMIN_INJECT = load_admin_template() if not app.debug else ""
 
 
-def is_admin_route(path: str) -> bool:
-    if not path:
-        return False
-    p = path.lower()
-    return "/admin" in p or "admin=true" in p
 
 
-def inject_admin_toolbar(html_content: str, admin: bool) -> str:
-    if not admin:
-        return html_content
-    
-    # Load template dynamically in debug mode for hot reloading
-    admin_inject = ADMIN_INJECT if not app.debug else load_admin_template()
-    
-    if not admin_inject:
-        return html_content
-    if "Admin Toolbar Injection Template" in html_content:
-        return html_content
-    if "</body>" in html_content:
-        return html_content.replace("</body>", f"{admin_inject}</body>")
-    if "</html>" in html_content:
-        return html_content.replace("</html>", f"{admin_inject}</html>")
-    return html_content + admin_inject
 
 
-def safe_join_projects(path_fragment: str) -> Path:
-    candidate = (PROJECTS_DIR / path_fragment).resolve()
-    if PROJECTS_DIR not in candidate.parents and candidate != PROJECTS_DIR:
-        raise PermissionError("Blocked path traversal")
-    return candidate
+
+
+
+# 🟢 git tag and git push +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
 def get_next_version_tag():
     """Get the next version tag (v1, v2, v3, etc.)"""
     try:
-        result = subprocess.run(['git', 'tag', '--list'], capture_output=True, text=True, timeout=10)
+        PROJECT_PATH = "projects/jbswebpage"
+        result = subprocess.run(['git', 'tag', '--list'], capture_output=True, text=True, timeout=10, cwd=PROJECT_PATH)
         if result.returncode != 0:
             return "v1"  # First tag
         
@@ -87,11 +61,12 @@ def get_next_version_tag():
 def commit_and_tag_changes(description: str):
     """Commit changes and create version tag following git.txt instructions"""
     try:
+        PROJECT_PATH = "projects/jbswebpage"
         # Ensure we're on git-integration branch
-        subprocess.run(['git', 'checkout', 'git-integration'], capture_output=True, text=True, timeout=10)
+        subprocess.run(['git', 'checkout', 'git-integration'], capture_output=True, text=True, timeout=10, cwd=PROJECT_PATH)
         
         # Stage all changes
-        result = subprocess.run(['git', 'add', '.'], capture_output=True, text=True, timeout=10)
+        result = subprocess.run(['git', 'add', '.'], capture_output=True, text=True, timeout=10, cwd=PROJECT_PATH)
         if result.returncode != 0:
             logger.error(f"Git add failed: {result.stderr}")
             return False, f"Git add failed: {result.stderr}"
@@ -100,8 +75,8 @@ def commit_and_tag_changes(description: str):
         next_tag = get_next_version_tag()
         
         # Commit changes
-        commit_message = f"AI Edit: {description}"
-        result = subprocess.run(['git', 'commit', '-m', commit_message], capture_output=True, text=True, timeout=15)
+        commit_message = f"{description}"
+        result = subprocess.run(['git', 'commit', '-m', commit_message], capture_output=True, text=True, timeout=15, cwd=PROJECT_PATH)
         if result.returncode != 0:
             if "nothing to commit" in result.stdout:
                 return True, "No changes to commit"
@@ -109,13 +84,13 @@ def commit_and_tag_changes(description: str):
             return False, f"Git commit failed: {result.stderr}"
         
         # Create version tag
-        result = subprocess.run(['git', 'tag', next_tag], capture_output=True, text=True, timeout=10)
+        result = subprocess.run(['git', 'tag', next_tag], capture_output=True, text=True, timeout=10, cwd=PROJECT_PATH)
         if result.returncode != 0:
             logger.error(f"Git tag failed: {result.stderr}")
             return False, f"Git tag failed: {result.stderr}"
         
         # Push to origin with tags
-        result = subprocess.run(['git', 'push', 'origin', 'git-integration', '--tags'], capture_output=True, text=True, timeout=30)
+        result = subprocess.run(['git', 'push', 'origin', 'git-integration', '--tags'], capture_output=True, text=True, timeout=30, cwd=PROJECT_PATH)
         if result.returncode != 0:
             logger.warning(f"Git push failed: {result.stderr}")
             # Continue even if push fails (might be network issue)
@@ -126,11 +101,30 @@ def commit_and_tag_changes(description: str):
         return False, f"Git operation failed: {str(e)}"
 
 
+
+# 🟢 git tag and git push +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+
+
+
+
+
+
+
+
+
+
+# 🟡 git version history +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+
 def get_version_history():
     """Get list of version tags with commit info"""
     try:
+        PROJECT_PATH = "projects/jbswebpage"
         # Get all tags
-        result = subprocess.run(['git', 'tag', '--list'], capture_output=True, text=True, timeout=10)
+        result = subprocess.run(['git', 'tag', '--list'], capture_output=True, text=True, timeout=10, cwd=PROJECT_PATH)
         if result.returncode != 0:
             return []
         
@@ -143,7 +137,7 @@ def get_version_history():
             # Get commit info for tag
             result = subprocess.run([
                 'git', 'log', '--format=%H|%s|%ai', '-1', tag
-            ], capture_output=True, text=True, timeout=10)
+            ], capture_output=True, text=True, timeout=10, cwd=PROJECT_PATH)
             
             if result.returncode == 0 and result.stdout.strip():
                 commit_hash, message, date = result.stdout.strip().split('|', 2)
@@ -160,25 +154,56 @@ def get_version_history():
         return []
 
 
+@app.route("/api/version-history", methods=["GET"])
+def version_history():
+    """Get version history for the admin UI"""
+    try:
+        history = get_version_history()
+        return jsonify({"success": True, "history": history})
+    except Exception as e:
+        logger.exception("version_history error")
+        return jsonify({"success": False, "error": f"Failed to get version history: {str(e)}"}), 500
+
+
+
+
+# 🟡 git version history +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+
+
+
+
+
+
+
+
+
+# 🔵 git rollback +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+
+
 def rollback_to_version(tag: str):
     """Rollback to specific version tag following git.txt instructions"""
     try:
+        PROJECT_PATH = "projects/jbswebpage"
         # Ensure we're on git-integration branch
-        subprocess.run(['git', 'checkout', 'git-integration'], capture_output=True, text=True, timeout=10)
+        subprocess.run(['git', 'checkout', 'git-integration'], capture_output=True, text=True, timeout=10, cwd=PROJECT_PATH)
         
         # Verify tag exists
-        result = subprocess.run(['git', 'tag', '--list', tag], capture_output=True, text=True, timeout=10)
+        result = subprocess.run(['git', 'tag', '--list', tag], capture_output=True, text=True, timeout=10, cwd=PROJECT_PATH)
         if result.returncode != 0 or not result.stdout.strip():
             return False, f"Tag {tag} not found"
         
         # Reset branch to desired version tag
-        result = subprocess.run(['git', 'reset', '--hard', tag], capture_output=True, text=True, timeout=15)
+        result = subprocess.run(['git', 'reset', '--hard', tag], capture_output=True, text=True, timeout=15, cwd=PROJECT_PATH)
         if result.returncode != 0:
             logger.error(f"Git reset failed: {result.stderr}")
             return False, f"Git reset failed: {result.stderr}"
         
         # Force push to origin
-        result = subprocess.run(['git', 'push', 'origin', 'git-integration', '--force'], capture_output=True, text=True, timeout=30)
+        result = subprocess.run(['git', 'push', 'origin', 'git-integration', '--force'], capture_output=True, text=True, timeout=30, cwd=PROJECT_PATH)
         if result.returncode != 0:
             logger.warning(f"Git push failed: {result.stderr}")
             # Continue even if push fails
@@ -190,9 +215,66 @@ def rollback_to_version(tag: str):
 
 
 
-@app.route("/health")
-def health():
-    return jsonify({"status": "healthy"}), 200
+@app.route("/api/rollback", methods=["POST"])
+def rollback():
+    """Rollback to a specific version tag"""
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        tag = data.get("tag", "").strip()
+        
+        if not tag:
+            return jsonify({"success": False, "error": "Missing tag parameter"}), 400
+        
+        if not tag.startswith('v') or not tag[1:].isdigit():
+            return jsonify({"success": False, "error": "Invalid tag format. Expected format: v1, v2, v3, etc."}), 400
+        
+        rollback_success, rollback_message = rollback_to_version(tag)
+        
+        return jsonify({
+            "success": rollback_success,
+            "message": rollback_message,
+            "rolledback_to": tag if rollback_success else None
+        })
+        
+    except Exception as e:
+        logger.exception("rollback error")
+        return jsonify({"success": False, "error": f"Rollback failed: {str(e)}"}), 500
+
+
+
+
+# 🔵 git rollback +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def safe_join_projects(path_fragment: str) -> Path:
+    candidate = (PROJECTS_DIR / path_fragment).resolve()
+    if PROJECTS_DIR not in candidate.parents and candidate != PROJECTS_DIR:
+        raise PermissionError("Blocked path traversal")
+    return candidate
+
+
+
+
+
+
+
+
+
+# 🔵 git direct text edit - manual editing +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
 
 
 @app.route("/api/direct-text-edit", methods=["POST"])
@@ -259,6 +341,87 @@ def direct_text_edit():
     except Exception as e:
         logger.exception("direct_text_edit error")
         return jsonify({"success": False, "error": f"Internal error: {e}"}), 500
+
+
+
+# 🔵 git direct text edit - manual editing +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 🟢 git admin edit - AI editing +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+
+
+
+
+def generate_qwen_edit_prompt(elements, user_request, target_file, batch_mode=False):
+    """Generate optimized prompt for Qwen Code CLI with batch editing support"""
+    
+    # Format selected elements with detailed context
+    element_details = []
+    for i, el in enumerate(elements):
+        element_details.append(f"""
+Element {i+1}:
+- Tag: <{el.get('tag', 'unknown')}>
+- ID: {el.get('id', 'none')}
+- Classes: {el.get('classes', 'none')}
+- Current Text: "{el.get('text', '')[:100]}..."
+- Attributes: {el.get('attributes', {})}""")
+    
+    elements_context = "\n".join(element_details)
+    
+    batch_instruction = ""
+    if batch_mode and len(elements) > 1:
+        batch_instruction = f"""
+BATCH MODE: You are editing {len(elements)} elements simultaneously. Apply the user's request consistently to ALL selected elements. Make similar changes to each element while respecting their individual context and content.
+"""
+    
+    return f"""You are an AI assistant specialized in editing HTML files. The user has selected specific elements in a webpage and wants to make changes to them.
+
+TARGET FILE: {target_file}
+
+SELECTED ELEMENTS FOR EDITING:
+{elements_context}
+
+USER REQUEST: {user_request}
+{batch_instruction}
+INSTRUCTIONS:
+1. Read the current {target_file} file to understand the full context
+2. Modify only the selected elements or their children according to the user's request
+3. PRESERVE all existing CSS classes, IDs, and styling attributes unless changes require styling modifications
+4. When adding new elements, match existing design patterns and styling
+5. For batch operations, apply changes consistently across all selected elements
+6. Save the modified content back to {target_file}
+7. Respond in valid JSON format with the following structure:
+   {{
+     "status": "success" or "error",
+     "message": "Description of what was done or what went wrong",
+     "details": "Any additional information"
+   }}
+
+CRITICAL: Make intelligent changes that fulfill the user's request. If they want shape changes, modify the appropriate CSS classes. If they want new content, add it in the right location.
+
+Please read the file, make the requested changes, and save it back. Respond ONLY in valid JSON format as specified above. You are using the qwen-turbo model, which is optimized for speed and efficiency."""
+
+
+
+
+
+
+
 
 
 @app.route("/api/admin-edit", methods=["POST"])
@@ -386,106 +549,28 @@ def admin_edit():
         return jsonify({"success": False, "error": f"Internal error: {str(e)[:200]}"}), 500
 
 
-@app.route("/api/version-history", methods=["GET"])
-def version_history():
-    """Get version history for the admin UI"""
-    try:
-        history = get_version_history()
-        return jsonify({"success": True, "history": history})
-    except Exception as e:
-        logger.exception("version_history error")
-        return jsonify({"success": False, "error": f"Failed to get version history: {str(e)}"}), 500
 
 
-@app.route("/api/rollback", methods=["POST"])
-def rollback():
-    """Rollback to a specific version tag"""
-    try:
-        data = request.get_json(force=True, silent=True) or {}
-        tag = data.get("tag", "").strip()
-        
-        if not tag:
-            return jsonify({"success": False, "error": "Missing tag parameter"}), 400
-        
-        if not tag.startswith('v') or not tag[1:].isdigit():
-            return jsonify({"success": False, "error": "Invalid tag format. Expected format: v1, v2, v3, etc."}), 400
-        
-        rollback_success, rollback_message = rollback_to_version(tag)
-        
-        return jsonify({
-            "success": rollback_success,
-            "message": rollback_message,
-            "rolledback_to": tag if rollback_success else None
-        })
-        
-    except Exception as e:
-        logger.exception("rollback error")
-        return jsonify({"success": False, "error": f"Rollback failed: {str(e)}"}), 500
 
 
-def generate_qwen_edit_prompt(elements, user_request, target_file, batch_mode=False):
-    """Generate optimized prompt for Qwen Code CLI with batch editing support"""
-    
-    # Format selected elements with detailed context
-    element_details = []
-    for i, el in enumerate(elements):
-        element_details.append(f"""
-Element {i+1}:
-- Tag: <{el.get('tag', 'unknown')}>
-- ID: {el.get('id', 'none')}
-- Classes: {el.get('classes', 'none')}
-- Current Text: "{el.get('text', '')[:100]}..."
-- Attributes: {el.get('attributes', {})}""")
-    
-    elements_context = "\n".join(element_details)
-    
-    batch_instruction = ""
-    if batch_mode and len(elements) > 1:
-        batch_instruction = f"""
-BATCH MODE: You are editing {len(elements)} elements simultaneously. Apply the user's request consistently to ALL selected elements. Make similar changes to each element while respecting their individual context and content.
-"""
-    
-    return f"""You are an AI assistant specialized in editing HTML files. The user has selected specific elements in a webpage and wants to make changes to them.
-
-TARGET FILE: {target_file}
-
-SELECTED ELEMENTS FOR EDITING:
-{elements_context}
-
-USER REQUEST: {user_request}
-{batch_instruction}
-INSTRUCTIONS:
-1. Read the current {target_file} file to understand the full context
-2. Modify only the selected elements or their children according to the user's request
-3. PRESERVE all existing CSS classes, IDs, and styling attributes unless changes require styling modifications
-4. When adding new elements, match existing design patterns and styling
-5. For batch operations, apply changes consistently across all selected elements
-6. Save the modified content back to {target_file}
-7. Respond in valid JSON format with the following structure:
-   {{
-     "status": "success" or "error",
-     "message": "Description of what was done or what went wrong",
-     "details": "Any additional information"
-   }}
-
-CRITICAL: Make intelligent changes that fulfill the user's request. If they want shape changes, modify the appropriate CSS classes. If they want new content, add it in the right location.
-
-Please read the file, make the requested changes, and save it back. Respond ONLY in valid JSON format as specified above. You are using the qwen-turbo model, which is optimized for speed and efficiency."""
 
 
-def generate_element_selector_for_qwen(element):
-    """Generate CSS selector for element that Qwen can use to identify changes"""
-    selector = element.get('tag', 'div')
-    
-    if element.get('id'):
-        selector += f"#{element.get('id')}"
-    
-    if element.get('classes'):
-        # Use first few classes for selector
-        classes = element.get('classes').split()[:2]
-        selector += '.' + '.'.join(classes)
-    
-    return selector
+
+
+
+# 🟢 git admin edit - AI editing +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 @app.route("/admin-static/<path:filename>")
@@ -494,6 +579,48 @@ def admin_static(filename):
     if not admin_static_dir.exists():
         return "Admin static directory not found", 404
     return send_from_directory(str(admin_static_dir), filename)
+
+
+
+def load_admin_template() -> str:
+    template_path = BASE_DIR / "admin" / "templates" / "admin-inject.html"
+    try:
+        return template_path.read_text(encoding="utf-8")
+    except Exception as e:
+        logger.warning(f"Admin template not found or failed to read: {e}")
+        return ""
+
+
+# Load template dynamically in development mode instead of caching
+ADMIN_INJECT = load_admin_template() if not app.debug else ""
+
+
+def is_admin_route(path: str) -> bool:
+    if not path:
+        return False
+    p = path.lower()
+    return "/admin" in p or "admin=true" in p
+
+
+def inject_admin_toolbar(html_content: str, admin: bool) -> str:
+    if not admin:
+        return html_content
+    
+    # Load template dynamically in debug mode for hot reloading
+    admin_inject = ADMIN_INJECT if not app.debug else load_admin_template()
+    
+    if not admin_inject:
+        return html_content
+    if "Admin Toolbar Injection Template" in html_content:
+        return html_content
+    if "</body>" in html_content:
+        return html_content.replace("</body>", f"{admin_inject}</body>")
+    if "</html>" in html_content:
+        return html_content.replace("</html>", f"{admin_inject}</html>")
+    return html_content + admin_inject
+
+
+
 
 
 @app.route("/", defaults={"filename": ""})
@@ -555,6 +682,7 @@ def serve_any(filename: str):
     except Exception as e:
         logger.exception("serve_any error")
         return f"Internal server error: {e}", 500
+
 
 
 if __name__ == "__main__":

@@ -342,10 +342,17 @@ const isAdminMode = window.location.pathname.includes('/admin') || window.locati
 const loadAdminToolbar = () => {
         console.log('📥 Loading admin toolbar script...');
         
+        // Prevent double loading
+        if (window.adminToolbarLoaded) {
+            console.log('⚠️ Admin toolbar already loaded, skipping...');
+            return;
+        }
+        
         // Load toolbar CSS and JS with cache busting
         const toolbarScript = document.createElement('script');
         toolbarScript.src = `/admin-static/toolbar.js?v=${Date.now()}`;
         toolbarScript.onload = () => {
+            window.adminToolbarLoaded = true;
             console.log('✅ Admin toolbar script loaded successfully');
             
             // Wait a moment for toolbar to initialize
@@ -482,99 +489,146 @@ const loadAdminToolbar = () => {
                 
                 // Add version history functionality
                 async function loadVersionHistory() {
+                    console.log('🚀 loadVersionHistory function called');
                     try {
+                        console.log('📡 Loading version history...');
                         const response = await fetch('/api/version-history');
                         const data = await response.json();
+
+                        console.log("✅ Version history data:", data);
                         
                         const versionSelect = document.getElementById('version-select');
+                        if (!versionSelect) {
+                            console.error('❌ Version select element not found');
+                            return;
+                        }
+                        
                         versionSelect.innerHTML = '<option value="">Select Version...</option>';
                         
-                        if (data.success && data.history.length > 0) {
+                        if (data.success && data.history && data.history.length > 0) {
+                            console.log(`📋 Found ${data.history.length} versions`);
                             data.history.forEach(version => {
                                 const option = document.createElement('option');
                                 option.value = version.tag;
                                 option.textContent = `${version.tag} - ${version.message.substring(0, 30)}${version.message.length > 30 ? '...' : ''}`;
                                 versionSelect.appendChild(option);
                             });
+                            console.log('✅ Version dropdown populated successfully');
                         } else {
+                            console.log('⚠️ No versions found');
                             versionSelect.innerHTML = '<option value="">No versions found</option>';
                         }
                     } catch (error) {
-                        console.error('Failed to load version history:', error);
-                        document.getElementById('version-select').innerHTML = '<option value="">Load failed</option>';
+                        console.error('❌ Failed to load version history:', error);
+                        const versionSelect = document.getElementById('version-select');
+                        if (versionSelect) {
+                            versionSelect.innerHTML = '<option value="">Load failed</option>';
+                        }
                     }
+                    console.log('🏁 loadVersionHistory function completed');
                 }
                 
-                // Handle version selection change
-                const versionSelect = document.getElementById('version-select');
-                if (versionSelect) {
-                    versionSelect.addEventListener('change', function() {
-                        const selectedTag = this.value;
-                        const rollbackBtn = document.getElementById('rollback-button');
-                        
-                        if (rollbackBtn) {
-                            if (selectedTag) {
-                                rollbackBtn.disabled = false;
-                                rollbackBtn.style.opacity = '1';
-                                rollbackBtn.style.cursor = 'pointer';
-                            } else {
-                                rollbackBtn.disabled = true;
-                                rollbackBtn.style.opacity = '0.6';
-                                rollbackBtn.style.cursor = 'not-allowed';
-                            }
-                        }
-                    });
-                }
                 
-                // Handle rollback button click
-                const rollbackBtnElement = document.getElementById('rollback-button');
-                if (rollbackBtnElement) {
-                    rollbackBtnElement.addEventListener('click', async function() {
-                    const selectedTag = document.getElementById('version-select').value;
-                    
-                    if (!selectedTag) return;
-                    
-                    if (!confirm(`Are you sure you want to rollback to ${selectedTag}? This will reset the current state to that version.`)) {
-                        return;
-                    }
-                    
-                    this.disabled = true;
-                    this.innerHTML = '↺ Rolling back...';
-                    
-                    try {
-                        const response = await fetch('/api/rollback', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ tag: selectedTag })
-                        });
-                        
-                        const data = await response.json();
-                        
-                        if (data.success) {
-                            alert(`Successfully rolled back to ${selectedTag}! The page will reload.`);
-                            window.location.reload();
-                        } else {
-                            alert(`Rollback failed: ${data.error}`);
-                        }
-                    } catch (error) {
-                        console.error('Rollback error:', error);
-                        alert('Rollback failed: Network error');
-                    } finally {
-                        this.disabled = false;
-                        this.innerHTML = '↺ Rollback';
-                    }
-                    });
-                }
                 
                 console.log('➕ Adding admin button to page...');
                 document.body.appendChild(adminButton);
                 document.body.appendChild(versionDropdown);
                 console.log('✅ Admin button and version controls added successfully');
                 
-                // Load version history
-                loadVersionHistory();
+                // Load version history and setup event listeners after loading
+                console.log('🎯 About to call loadVersionHistory...');
+                loadVersionHistory().then(() => {
+                    console.log('🎉 loadVersionHistory completed, setting up listeners...');
+                    // Setup version selection change handler after history is loaded
+                    setTimeout(() => {
+                        const versionSelect = document.getElementById('version-select');
+                        const rollbackBtn = document.getElementById('rollback-button');
+                        
+                        console.log('🔧 Setting up version change listener...');
+                        console.log('🔍 Version select found:', !!versionSelect);
+                        console.log('🔍 Rollback button found:', !!rollbackBtn);
+                        
+                        if (versionSelect && rollbackBtn) {
+                            versionSelect.addEventListener('change', function() {
+                                const selectedTag = this.value;
+                                
+                                console.log('🔄 Version changed to:', selectedTag);
+                                
+                                if (selectedTag) {
+                                    console.log('✅ Enabling rollback button');
+                                    rollbackBtn.disabled = false;
+                                    rollbackBtn.style.opacity = '1';
+                                    rollbackBtn.style.cursor = 'pointer';
+                                    rollbackBtn.style.background = '#dc3545';
+                                } else {
+                                    console.log('❌ Disabling rollback button');
+                                    rollbackBtn.disabled = true;
+                                    rollbackBtn.style.opacity = '0.6';
+                                    rollbackBtn.style.cursor = 'not-allowed';
+                                    rollbackBtn.style.background = '#6c757d';
+                                }
+                            });
+                            console.log('✅ Version change listener added successfully');
+                            
+                            // Also setup rollback button click handler here
+                            console.log('🔧 Setting up rollback button click handler...');
+                            if (rollbackBtn) {
+                                rollbackBtn.addEventListener('click', async function() {
+                                    console.log('🚀 Rollback button clicked!');
+                                    const selectedTag = document.getElementById('version-select').value;
+                                    console.log('📋 Selected tag:', selectedTag);
+                                    
+                                    if (!selectedTag) {
+                                        console.log('❌ No tag selected, returning');
+                                        return;
+                                    }
+                                    
+                                    console.log('💭 Showing confirmation dialog...');
+                                    if (!confirm(`Are you sure you want to rollback to ${selectedTag}? This will reset the current state to that version.`)) {
+                                        console.log('❌ User cancelled rollback');
+                                        return;
+                                    }
+                                    
+                                    console.log('🔄 Starting rollback process...');
+                                    this.disabled = true;
+                                    this.innerHTML = '↺ Rolling back...';
+                                    
+                                    try {
+                                        const response = await fetch('/api/rollback', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                            },
+                                            body: JSON.stringify({ tag: selectedTag })
+                                        });
+                                        
+                                        const data = await response.json();
+
+                                        console.log("✅ Rollback data:", data);
+                                        
+                                        if (data.success) {
+                                            alert(`Successfully rolled back to ${selectedTag}! The page will reload.`);
+                                            window.location.reload();
+                                        } else {
+                                            alert(`Rollback failed: ${data.error}`);
+                                        }
+                                    } catch (error) {
+                                        console.error('Rollback error:', error);
+                                        alert('Rollback failed: Network error');
+                                    } finally {
+                                        this.disabled = false;
+                                        this.innerHTML = '↺ Rollback';
+                                    }
+                                });
+                                console.log('✅ Rollback button click handler added successfully');
+                            } else {
+                                console.error('❌ Could not setup rollback button click handler - button not found');
+                            }
+                        } else {
+                            console.error('❌ Could not setup version change listener - elements not found');
+                        }
+                    }, 100);
+                });
                 
                 // Function to show admin UI elements
                 window.showAdminUI = function() {

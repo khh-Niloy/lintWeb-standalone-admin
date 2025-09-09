@@ -62,8 +62,8 @@ def commit_and_tag_changes(description: str):
     """Commit changes and create version tag following git.txt instructions"""
     try:
         PROJECT_PATH = "projects/jbswebpage"
-        # Ensure we're on git-integration branch
-        subprocess.run(['git', 'checkout', 'git-integration'], capture_output=True, text=True, timeout=10, cwd=PROJECT_PATH)
+        # Ensure we're on main branch
+        subprocess.run(['git', 'checkout', 'main'], capture_output=True, text=True, timeout=10, cwd=PROJECT_PATH)
         
         # Stage all changes
         result = subprocess.run(['git', 'add', '.'], capture_output=True, text=True, timeout=10, cwd=PROJECT_PATH)
@@ -90,7 +90,7 @@ def commit_and_tag_changes(description: str):
             return False, f"Git tag failed: {result.stderr}"
         
         # Push to origin with tags
-        result = subprocess.run(['git', 'push', 'origin', 'git-integration', '--tags'], capture_output=True, text=True, timeout=30, cwd=PROJECT_PATH)
+        result = subprocess.run(['git', 'push', 'origin', 'main', '--tags'], capture_output=True, text=True, timeout=30, cwd=PROJECT_PATH)
         if result.returncode != 0:
             logger.warning(f"Git push failed: {result.stderr}")
             # Continue even if push fails (might be network issue)
@@ -188,8 +188,8 @@ def rollback_to_version(tag: str):
     """Rollback to specific version tag following git.txt instructions"""
     try:
         PROJECT_PATH = "projects/jbswebpage"
-        # Ensure we're on git-integration branch
-        subprocess.run(['git', 'checkout', 'git-integration'], capture_output=True, text=True, timeout=10, cwd=PROJECT_PATH)
+        # Ensure we're on main branch
+        subprocess.run(['git', 'checkout', 'main'], capture_output=True, text=True, timeout=10, cwd=PROJECT_PATH)
         
         # Verify tag exists
         result = subprocess.run(['git', 'tag', '--list', tag], capture_output=True, text=True, timeout=10, cwd=PROJECT_PATH)
@@ -203,7 +203,7 @@ def rollback_to_version(tag: str):
             return False, f"Git reset failed: {result.stderr}"
         
         # Force push to origin
-        result = subprocess.run(['git', 'push', 'origin', 'git-integration', '--force'], capture_output=True, text=True, timeout=30, cwd=PROJECT_PATH)
+        result = subprocess.run(['git', 'push', 'origin', 'main', '--force'], capture_output=True, text=True, timeout=30, cwd=PROJECT_PATH)
         if result.returncode != 0:
             logger.warning(f"Git push failed: {result.stderr}")
             # Continue even if push fails
@@ -221,6 +221,10 @@ def rollback():
     try:
         data = request.get_json(force=True, silent=True) or {}
         tag = data.get("tag", "").strip()
+
+        print("✅ Rollback data:", data)
+
+
         
         if not tag:
             return jsonify({"success": False, "error": "Missing tag parameter"}), 400
@@ -484,8 +488,8 @@ def admin_edit():
         
         try:
             result = subprocess.run([
-                "qwen", "-m", "qwen-30b", "-p", "-y"
-            ], input=qwen_prompt, cwd=str(project_path), capture_output=True, text=True, timeout=60)
+                "qwen", "-m", "qwen-turbo", "-p", "-y"
+            ], input=qwen_prompt, cwd=str(project_path), capture_output=True, text=True, timeout=180)
         except subprocess.TimeoutExpired:
             logger.error("Qwen CLI timeout")
             return jsonify({"success": False, "error": "AI processing timeout"}), 500

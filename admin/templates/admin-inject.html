@@ -1,22 +1,407 @@
 <!-- Admin Toolbar Injection Template -->
 <!-- This script is injected when accessing /admin routes -->
 <script>
+
+// Authentication Modal
+function showAuthModal() {
+    // Create modal overlay
+    const modalOverlay = document.createElement('div');
+    modalOverlay.id = 'admin-auth-modal';
+    modalOverlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(10px);
+        z-index: 999999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.3s ease-out;
+    `;
+    
+    // Create modal content
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+        background: white;
+        border-radius: 12px;
+        padding: 40px;
+        width: 400px;
+        max-width: 90vw;
+        box-shadow: 
+            0 25px 50px rgba(0, 0, 0, 0.3),
+            0 0 0 1px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        transform: scale(0.9);
+        animation: scaleIn 0.3s ease-out 0.1s forwards;
+        color: #333;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    `;
+    
+    modalContent.innerHTML = `
+        <div style="margin-bottom: 30px;">
+            <div style="font-size: 48px; margin-bottom: 15px;">🔐</div>
+            <h2 style="margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; color: #333;">Admin Access</h2>
+            <p style="margin: 10px 0 0 0; opacity: 0.7; font-size: 16px; color: #666;">Enter your credentials to continue</p>
+        </div>
+        
+        <form id="admin-auth-form" style="display: flex; flex-direction: column; gap: 20px;">
+            <div style="position: relative;">
+                <input 
+                    type="text" 
+                    id="admin-username" 
+                    placeholder="Username"
+                    style="
+                        width: 100%;
+                        padding: 16px 20px;
+                        border: 1px solid #e0e0e0;
+                        border-radius: 8px;
+                        background: white;
+                        color: #333;
+                        font-size: 16px;
+                        font-weight: 400;
+                        outline: none;
+                        transition: all 0.3s ease;
+                        box-sizing: border-box;
+                    "
+                    onfocus="this.style.borderColor='#333'; this.style.boxShadow='0 0 0 3px rgba(0, 0, 0, 0.1)'"
+                    onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'"
+                />
+            </div>
+            
+            <div style="position: relative;">
+                <input 
+                    type="password" 
+                    id="admin-password" 
+                    placeholder="Password"
+                    style="
+                        width: 100%;
+                        padding: 16px 50px 16px 20px;
+                        border: 1px solid #e0e0e0;
+                        border-radius: 8px;
+                        background: white;
+                        color: #333;
+                        font-size: 16px;
+                        font-weight: 400;
+                        outline: none;
+                        transition: all 0.3s ease;
+                        box-sizing: border-box;
+                    "
+                    onfocus="this.style.borderColor='#333'; this.style.boxShadow='0 0 0 3px rgba(0, 0, 0, 0.1)'"
+                    onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'"
+                />
+                <button 
+                    type="button"
+                    id="toggle-password"
+                    style="
+                        position: absolute;
+                        right: 15px;
+                        top: 50%;
+                        transform: translateY(-50%);
+                        background: none;
+                        border: none;
+                        cursor: pointer;
+                        color: #666;
+                        padding: 5px;
+                        transition: color 0.2s ease;
+                        width: 24px;
+                        height: 24px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                    "
+                    onmouseover="this.style.color='#333'"
+                    onmouseout="this.style.color='#666'"
+                    onclick="togglePasswordVisibility()"
+                >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <button 
+                type="submit"
+                style="
+                    width: 100%;
+                    padding: 16px 20px;
+                    border: none;
+                    border-radius: 8px;
+                    background: #333;
+                    color: white;
+                    font-size: 16px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    letter-spacing: 0.5px;
+                "
+                onmouseover="this.style.background='#000'; this.style.transform='translateY(-2px)'"
+                onmouseout="this.style.background='#333'; this.style.transform='translateY(0)'"
+            >
+                Access Admin Panel
+            </button>
+        </form>
+        
+        <div id="auth-error" style="
+            margin-top: 20px; 
+            padding: 12px; 
+            background: #fee; 
+            border-radius: 8px; 
+            color: #c33; 
+            font-size: 14px;
+            display: none;
+            border: 1px solid #fcc;
+        "></div>
+    `;
+    
+    modalOverlay.appendChild(modalContent);
+    document.body.appendChild(modalOverlay);
+    
+    // Add CSS animations
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        input::placeholder {
+            color: #999;
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // Password toggle function
+    window.togglePasswordVisibility = function() {
+        const passwordField = document.getElementById('admin-password');
+        const toggleButton = document.getElementById('toggle-password');
+        
+        if (passwordField.type === 'password') {
+            passwordField.type = 'text';
+            // Eye with slash (hidden)
+            toggleButton.innerHTML = `
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                </svg>
+            `;
+        } else {
+            passwordField.type = 'password';
+            // Eye (visible)
+            toggleButton.innerHTML = `
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                </svg>
+            `;
+        }
+    };
+    
+    // Success Animation Function - Fast and smooth
+    function showSuccessAnimation(callback) {
+        // Create simple success overlay
+        const successOverlay = document.createElement('div');
+        successOverlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #F3F4F6;
+            z-index: 1000000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            animation: quickFadeIn 0.2s ease-out forwards;
+        `;
+        
+        // Create simple success content
+        const successContent = document.createElement('div');
+        successContent.style.cssText = `
+            text-align: center;
+            color: black;
+            transform: scale(0.8);
+            animation: quickPop 0.3s ease-out 0.1s forwards;
+        `;
+        
+        successContent.innerHTML = `
+            <div style="
+                width: 80px;
+                height: 80px;
+                border: 3px solid black;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 20px;
+            ">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+                    <path d="M20 6L9 17l-5-5" stroke="black" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <h2 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: black;">Success!</h2>
+            <p style="margin: 0; font-size: 14px; color: black; opacity: 0.7;">Logging you in...</p>
+        `;
+        
+        successOverlay.appendChild(successContent);
+        document.body.appendChild(successOverlay);
+        
+        // Add simple animations CSS
+        const successStyle = document.createElement('style');
+        successStyle.textContent = `
+            @keyframes quickFadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            @keyframes quickPop {
+                from { transform: scale(0.8); opacity: 0; }
+                to { transform: scale(1); opacity: 1; }
+            }
+            @keyframes quickFadeOut {
+                from { opacity: 1; }
+                to { opacity: 0; }
+            }
+        `;
+        document.head.appendChild(successStyle);
+        
+        // Remove animation after 0.8 seconds total
+        setTimeout(() => {
+            successOverlay.style.animation = 'quickFadeOut 0.2s ease-out forwards';
+            setTimeout(() => {
+                successOverlay.remove();
+                successStyle.remove();
+                callback();
+            }, 200);
+        }, 600);
+    }
+    
+    // Handle form submission
+    document.getElementById('admin-auth-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const username = document.getElementById('admin-username').value;
+        const password = document.getElementById('admin-password').value;
+        const errorDiv = document.getElementById('auth-error');
+        
+        if (username === 'admin' && password === 'admin123') {
+            // Success - show awesome animation then continue
+            showSuccessAnimation(() => {
+                modalOverlay.remove();
+                setAuthenticationState(true);
+                
+                // Show admin UI elements if they exist
+                if (window.showAdminUI) {
+                    window.showAdminUI();
+                }
+                
+                loadAdminToolbar();
+            });
+        } else {
+            // Show error
+            errorDiv.style.display = 'block';
+            errorDiv.textContent = '❌ Invalid credentials. Please try again.';
+            
+            // Shake animation
+            modalContent.style.animation = 'shake 0.5s ease-in-out';
+            setTimeout(() => {
+                modalContent.style.animation = '';
+            }, 500);
+        }
+    });
+    
+    // Add shake animation
+    const shakeStyle = document.createElement('style');
+    shakeStyle.textContent = `
+        @keyframes shake {
+            0%, 100% { transform: translateX(0) scale(1); }
+            25% { transform: translateX(-10px) scale(1); }
+            75% { transform: translateX(10px) scale(1); }
+        }
+    `;
+    document.head.appendChild(shakeStyle);
+    
+    // Focus on username field
+    setTimeout(() => {
+        document.getElementById('admin-username').focus();
+    }, 400);
+}
+
+// Initialize authentication state with localStorage persistence
+const ADMIN_SESSION_KEY = 'admin_authenticated';
+window.isAuthenticated = localStorage.getItem(ADMIN_SESSION_KEY) === 'true';
+
 // Check if we're in admin mode based on URL
 const isAdminMode = window.location.pathname.includes('/admin') || window.location.search.includes('admin=true');
 
-if (isAdminMode) {
-    console.log('🔧 Admin mode detected - initializing toolbar...');
-    console.log('🔍 Current URL:', window.location.href);
-    console.log('🔍 Pathname:', window.location.pathname);
+// Function to set authentication state
+function setAuthenticationState(authenticated) {
+    window.isAuthenticated = authenticated;
+    if (authenticated) {
+        localStorage.setItem(ADMIN_SESSION_KEY, 'true');
+    } else {
+        localStorage.removeItem(ADMIN_SESSION_KEY);
+    }
+}
+
+// Function to hide admin UI elements
+function hideAdminUI() {
+    const logoutBtn = document.getElementById('admin-logout-button');
+    const editBtn = document.getElementById('admin-toolbar-button');
+    const versionDropdown = document.getElementById('version-history-dropdown');
+    const toolbar = document.getElementById('admin-toolbar');
     
-    // Load the admin toolbar
-    const loadAdminToolbar = () => {
+    if (logoutBtn) {
+        logoutBtn.style.display = 'none';
+    }
+    if (editBtn) {
+        editBtn.style.display = 'none';
+    }
+    if (versionDropdown) {
+        versionDropdown.style.display = 'none';
+    }
+    if (toolbar) {
+        toolbar.style.display = 'none';
+    }
+}
+
+// Function to logout and redirect
+function logoutAdmin() {
+    setAuthenticationState(false);
+    hideAdminUI();
+    
+    // Redirect to the same page without /admin
+    const currentPath = window.location.pathname;
+    if (currentPath.includes('/admin')) {
+        const newPath = currentPath.replace('/admin', '');
+        window.location.href = newPath || '/';
+    } else if (window.location.search.includes('admin=true')) {
+        const url = new URL(window.location);
+        url.searchParams.delete('admin');
+        window.location.href = url.toString();
+    }
+}
+
+// Load the admin toolbar function (define before using)
+const loadAdminToolbar = () => {
         console.log('📥 Loading admin toolbar script...');
+        
+        // Prevent double loading
+        if (window.adminToolbarLoaded) {
+            console.log('⚠️ Admin toolbar already loaded, skipping...');
+            return;
+        }
         
         // Load toolbar CSS and JS with cache busting
         const toolbarScript = document.createElement('script');
         toolbarScript.src = `/admin-static/toolbar.js?v=${Date.now()}`;
         toolbarScript.onload = () => {
+            window.adminToolbarLoaded = true;
             console.log('✅ Admin toolbar script loaded successfully');
             
             // Wait a moment for toolbar to initialize
@@ -41,45 +426,154 @@ if (isAdminMode) {
                     }
                 }
                 
+                // Create logout button
+                const logoutButton = document.createElement('div');
+                logoutButton.id = 'admin-logout-button';
+                logoutButton.innerHTML = `
+                    <span>Logout</span>
+                `;
+                logoutButton.style.cssText = `
+                    position: fixed;
+                    bottom: 40px;
+                    right: 110px;
+                    z-index: 99999;
+                    align-items: center;
+                    background: red;
+                    color: white;
+                    padding: 14px 24px;
+                    border-radius: 12px;
+                    font-weight: 600;
+                    border: 0.5px solid #e2e8f0;
+                    box-shadow: 
+                        0 8px 24px rgba(0, 0, 0, 0.08),
+                        0 2px 8px rgba(0, 0, 0, 0.04);
+                    backdrop-filter: blur(8px);
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+                    font-size: 14px;
+                    cursor: pointer;
+                    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+                    display: ${window.isAuthenticated ? 'flex' : 'none'};
+                `;
+
                 // Create admin toolbar button beside the LintAI watermark
                 const adminButton = document.createElement('div');
                 adminButton.id = 'admin-toolbar-button';
                 adminButton.innerHTML = `
-                    🔧 <span>Edit</span>
+                    <span>Edit</span>
                 `;
                 adminButton.style.cssText = `
                     position: fixed;
-                    bottom: 10px;
-                    right: 160px;
+                    bottom: 40px;
+                    right: 20px;
                     z-index: 99999;
-                    background: rgba(16, 185, 129, 0.9);
-                    border: 1px solid rgba(255, 255, 255, 0.3);
-                    color: white;
-                    padding: 10px 16px;
-                    border-radius: 25px;
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-                    font-size: 12px;
-                    font-weight: 500;
-                    text-decoration: none;
-                    display: flex;
                     align-items: center;
-                    gap: 5px;
-                    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-                    transition: all 0.2s ease;
+                    background: #000000;
+                    color: #ffffff;
+                    padding: 14px 24px;
+                    border-radius: 12px;
+                    font-weight: 600;
+                    border: 1px solid #1a1a1a;
+                    box-shadow: 
+                        0 8px 24px rgba(0, 0, 0, 0.25),
+                        0 2px 8px rgba(0, 0, 0, 0.15);
+                    backdrop-filter: blur(8px);
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+                    font-size: 14px;
                     cursor: pointer;
-                    opacity: 1;
-                    pointer-events: auto;
+                    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+                    display: ${window.isAuthenticated ? 'flex' : 'none'};
                 `;
                 
+                // Create version history dropdown
+                const versionDropdown = document.createElement('div');
+                versionDropdown.id = 'version-history-dropdown';
+                versionDropdown.innerHTML = `
+                    <select id="version-select" style="
+                        background: #ffffff;
+                        color: #0f172a;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 8px;
+                        padding: 10px 14px;
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+                        font-size: 13px;
+                        font-weight: 500;
+                        cursor: pointer;
+                        outline: none;
+                        min-width: 140px;
+                        transition: all 0.2s ease;
+                        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+                    ">
+                        <option value="">Loading...</option>
+                    </select>
+                `;
+                versionDropdown.style.cssText = `
+                    position: fixed;
+                    bottom: 40px;
+                    left: 20px;
+                    z-index: 99999;
+                    background: #000000;
+                    padding: 5px 5px;
+                    border-radius: 12px;
+                    align-items: center;
+                    gap: 10px;
+                    display: ${window.isAuthenticated ? 'flex' : 'none'};
+                `;
                 
-                // Add simple hover effect
+                // Create rollback button
+                const rollbackButton = document.createElement('button');
+                rollbackButton.id = 'rollback-button';
+                rollbackButton.innerHTML = '↺ Rollback';
+                rollbackButton.disabled = true;
+                rollbackButton.style.cssText = `
+                    background: #ffffff;
+                    color: #ef4444;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 8px;
+                    padding: 10px 16px;
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+                    font-size: 13px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    opacity: 0.6;
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+                `;
+                
+                versionDropdown.appendChild(rollbackButton);
+                
+                
+                // Add hover effect for logout button
+                logoutButton.addEventListener('mouseenter', () => {
+                    logoutButton.style.background = '#000000';
+                    logoutButton.style.color = '#ffffff';
+                    logoutButton.style.borderColor = '#1a1a1a';
+                    logoutButton.style.transform = 'translateY(-2px)';
+                    logoutButton.style.boxShadow = '0 12px 32px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.15)';
+                });
+                logoutButton.addEventListener('mouseleave', () => {
+                    logoutButton.style.background = 'red';
+                    logoutButton.style.color = 'white';
+                    logoutButton.style.borderColor = '#e2e8f0';
+                    logoutButton.style.transform = 'translateY(0px)';
+                    logoutButton.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04)';
+                });
+
+                // Add click handler for logout button
+                logoutButton.addEventListener('click', () => {
+                    console.log('🚪 Logout button clicked!');
+                    logoutAdmin();
+                });
+
+                // Add hover effect for edit button
                 adminButton.addEventListener('mouseenter', () => {
-                    adminButton.style.background = 'rgba(16, 185, 129, 1)';
-                    adminButton.style.transform = 'scale(1.05)';
+                    adminButton.style.background = '#1a1a1a';
+                    adminButton.style.transform = 'translateY(-2px)';
+                    adminButton.style.boxShadow = '0 12px 32px rgba(0, 0, 0, 0.35), 0 4px 12px rgba(0, 0, 0, 0.25)';
                 });
                 adminButton.addEventListener('mouseleave', () => {
-                    adminButton.style.background = 'rgba(16, 185, 129, 0.9)';
-                    adminButton.style.transform = 'scale(1)';
+                    adminButton.style.background = '#000000';
+                    adminButton.style.transform = 'translateY(0px)';
+                    adminButton.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.25), 0 2px 8px rgba(0, 0, 0, 0.15)';
                 });
                 
                 // Add click handler to toggle toolbar
@@ -95,10 +589,195 @@ if (isAdminMode) {
                     }
                 });
                 
-                console.log('➕ Adding admin button to page...');
-                document.body.appendChild(adminButton);
-                console.log('✅ Admin button added successfully');
+                // Add version history functionality
+                async function loadVersionHistory() {
+                    console.log('🚀 loadVersionHistory function called');
+                    try {
+                        console.log('📡 Loading version history...');
+                        const response = await fetch('/api/version-history');
+                        const data = await response.json();
+
+                        console.log("✅ Version history data:", data);
+                        
+                        const versionSelect = document.getElementById('version-select');
+                        if (!versionSelect) {
+                            console.error('❌ Version select element not found');
+                            return;
+                        }
+                        
+                        versionSelect.innerHTML = '<option value="">Select Version...</option>';
+                        
+                        if (data.success && data.history && data.history.length > 0) {
+                            console.log(`📋 Found ${data.history.length} versions`);
+                            data.history.forEach(version => {
+                                const option = document.createElement('option');
+                                option.value = version.tag;
+                                option.textContent = `${version.tag} - ${version.message.substring(0, 30)}${version.message.length > 30 ? '...' : ''}`;
+                                versionSelect.appendChild(option);
+                            });
+                            console.log('✅ Version dropdown populated successfully');
+                        } else {
+                            console.log('⚠️ No versions found');
+                            versionSelect.innerHTML = '<option value="">No versions found</option>';
+                        }
+                    } catch (error) {
+                        console.error('❌ Failed to load version history:', error);
+                        const versionSelect = document.getElementById('version-select');
+                        if (versionSelect) {
+                            versionSelect.innerHTML = '<option value="">Load failed</option>';
+                        }
+                    }
+                    console.log('🏁 loadVersionHistory function completed');
+                }
                 
+                
+                
+                console.log('➕ Adding admin buttons to page...');
+                document.body.appendChild(logoutButton);
+                document.body.appendChild(adminButton);
+                document.body.appendChild(versionDropdown);
+                console.log('✅ Admin buttons and version controls added successfully');
+                
+                // Load version history and setup event listeners after loading
+                console.log('🎯 About to call loadVersionHistory...');
+                loadVersionHistory().then(() => {
+                    console.log('🎉 loadVersionHistory completed, setting up listeners...');
+                    // Setup version selection change handler after history is loaded
+                    setTimeout(() => {
+                        const versionSelect = document.getElementById('version-select');
+                        const rollbackBtn = document.getElementById('rollback-button');
+                        
+                        console.log('🔧 Setting up version change listener...');
+                        console.log('🔍 Version select found:', !!versionSelect);
+                        console.log('🔍 Rollback button found:', !!rollbackBtn);
+                        
+                        if (versionSelect && rollbackBtn) {
+                            // Add hover effects for select dropdown
+                            versionSelect.addEventListener('mouseenter', function() {
+                                this.style.borderColor = '#cbd5e1';
+                                this.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.08)';
+                            });
+                            versionSelect.addEventListener('mouseleave', function() {
+                                this.style.borderColor = '#e2e8f0';
+                                this.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.04)';
+                            });
+
+                            // Add hover effects for rollback button
+                            rollbackBtn.addEventListener('mouseenter', function() {
+                                if (!this.disabled) {
+                                    this.style.background = '#fee2e2';
+                                    this.style.borderColor = '#fca5a5';
+                                    this.style.transform = 'translateY(-1px)';
+                                    this.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.08)';
+                                }
+                            });
+                            rollbackBtn.addEventListener('mouseleave', function() {
+                                if (!this.disabled) {
+                                    this.style.background = '#fef2f2';
+                                    this.style.borderColor = '#fecaca';
+                                    this.style.transform = 'translateY(0)';
+                                    this.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.04)';
+                                }
+                            });
+
+                            versionSelect.addEventListener('change', function() {
+                                const selectedTag = this.value;
+                                
+                                console.log('🔄 Version changed to:', selectedTag);
+                                
+                                if (selectedTag) {
+                                    console.log('✅ Enabling rollback button');
+                                    rollbackBtn.disabled = false;
+                                    rollbackBtn.style.opacity = '1';
+                                    rollbackBtn.style.cursor = 'pointer';
+                                    rollbackBtn.style.background = '#fef2f2';
+                                    rollbackBtn.style.borderColor = '#fecaca';
+                                    rollbackBtn.style.color = '#dc2626';
+                                } else {
+                                    console.log('❌ Disabling rollback button');
+                                    rollbackBtn.disabled = true;
+                                    rollbackBtn.style.opacity = '0.6';
+                                    rollbackBtn.style.cursor = 'not-allowed';
+                                    rollbackBtn.style.background = '#f8fafc';
+                                    rollbackBtn.style.borderColor = '#e2e8f0';
+                                    rollbackBtn.style.color = '#94a3b8';
+                                }
+                            });
+                            console.log('✅ Version change listener added successfully');
+                            
+                            // Also setup rollback button click handler here
+                            console.log('🔧 Setting up rollback button click handler...');
+                            if (rollbackBtn) {
+                                rollbackBtn.addEventListener('click', async function() {
+                                    console.log('🚀 Rollback button clicked!');
+                                    const selectedTag = document.getElementById('version-select').value;
+                                    console.log('📋 Selected tag:', selectedTag);
+                                    
+                                    if (!selectedTag) {
+                                        console.log('❌ No tag selected, returning');
+                                        return;
+                                    }
+                                    
+                                    console.log('💭 Showing confirmation dialog...');
+                                    if (!confirm(`Are you sure you want to rollback to ${selectedTag}? This will reset the current state to that version.`)) {
+                                        console.log('❌ User cancelled rollback');
+                                        return;
+                                    }
+                                    
+                                    console.log('🔄 Starting rollback process...');
+                                    this.disabled = true;
+                                    this.innerHTML = '↺ Rolling back...';
+                                    
+                                    try {
+                                        const response = await fetch('/api/rollback', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                            },
+                                            body: JSON.stringify({ tag: selectedTag })
+                                        });
+                                        
+                                        const data = await response.json();
+
+                                        console.log("✅ Rollback data:", data);
+                                        
+                                        if (data.success) {
+                                            alert(`Successfully rolled back to ${selectedTag}! The page will reload.`);
+                                            window.location.reload();
+                                        } else {
+                                            alert(`Rollback failed: ${data.error}`);
+                                        }
+                                    } catch (error) {
+                                        console.error('Rollback error:', error);
+                                        alert('Rollback failed: Network error');
+                                    } finally {
+                                        this.disabled = false;
+                                        this.innerHTML = '↺ Rollback';
+                                    }
+                                });
+                                console.log('✅ Rollback button click handler added successfully');
+                            } else {
+                                console.error('❌ Could not setup rollback button click handler - button not found');
+                            }
+                        } else {
+                            console.error('❌ Could not setup version change listener - elements not found');
+                        }
+                    }, 100);
+                });
+                
+                // Function to show admin UI elements
+                window.showAdminUI = function() {
+                    console.log('🔧 Showing admin UI elements...');
+                    logoutButton.style.display = 'flex';
+                    adminButton.style.display = 'flex';
+                    versionDropdown.style.display = 'flex';
+                    console.log('✅ Admin UI elements are now visible');
+                };
+                
+                // Show admin button and version controls if authenticated
+                if (window.isAuthenticated) {
+                    window.showAdminUI();
+                }
                 
                 // Show welcome message
                 setTimeout(() => {
@@ -117,7 +796,18 @@ if (isAdminMode) {
         
         console.log('📤 Appending toolbar script to head...');
         document.head.appendChild(toolbarScript);
-    };
+};
+
+if (isAdminMode) {
+    console.log('🔧 Admin mode detected - initializing toolbar...');
+    console.log('🔍 Current URL:', window.location.href);
+    console.log('🔍 Pathname:', window.location.pathname);
+    console.log('🔍 Already authenticated:', window.isAuthenticated);
+    
+    // Show authentication modal only if not already authenticated
+    if (!window.isAuthenticated) {
+        showAuthModal();
+    }
     
     // Load when DOM is ready
     if (document.readyState === 'loading') {

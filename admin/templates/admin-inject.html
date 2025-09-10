@@ -293,7 +293,7 @@ function showAuthModal() {
             // Success - show awesome animation then continue
             showSuccessAnimation(() => {
                 modalOverlay.remove();
-                window.isAuthenticated = true;
+                setAuthenticationState(true);
                 
                 // Show admin UI elements if they exist
                 if (window.showAdminUI) {
@@ -332,11 +332,60 @@ function showAuthModal() {
     }, 400);
 }
 
-// Initialize authentication state
-window.isAuthenticated = false;
+// Initialize authentication state with localStorage persistence
+const ADMIN_SESSION_KEY = 'admin_authenticated';
+window.isAuthenticated = localStorage.getItem(ADMIN_SESSION_KEY) === 'true';
 
 // Check if we're in admin mode based on URL
 const isAdminMode = window.location.pathname.includes('/admin') || window.location.search.includes('admin=true');
+
+// Function to set authentication state
+function setAuthenticationState(authenticated) {
+    window.isAuthenticated = authenticated;
+    if (authenticated) {
+        localStorage.setItem(ADMIN_SESSION_KEY, 'true');
+    } else {
+        localStorage.removeItem(ADMIN_SESSION_KEY);
+    }
+}
+
+// Function to hide admin UI elements
+function hideAdminUI() {
+    const logoutBtn = document.getElementById('admin-logout-button');
+    const editBtn = document.getElementById('admin-toolbar-button');
+    const versionDropdown = document.getElementById('version-history-dropdown');
+    const toolbar = document.getElementById('admin-toolbar');
+    
+    if (logoutBtn) {
+        logoutBtn.style.display = 'none';
+    }
+    if (editBtn) {
+        editBtn.style.display = 'none';
+    }
+    if (versionDropdown) {
+        versionDropdown.style.display = 'none';
+    }
+    if (toolbar) {
+        toolbar.style.display = 'none';
+    }
+}
+
+// Function to logout and redirect
+function logoutAdmin() {
+    setAuthenticationState(false);
+    hideAdminUI();
+    
+    // Redirect to the same page without /admin
+    const currentPath = window.location.pathname;
+    if (currentPath.includes('/admin')) {
+        const newPath = currentPath.replace('/admin', '');
+        window.location.href = newPath || '/';
+    } else if (window.location.search.includes('admin=true')) {
+        const url = new URL(window.location);
+        url.searchParams.delete('admin');
+        window.location.href = url.toString();
+    }
+}
 
 // Load the admin toolbar function (define before using)
 const loadAdminToolbar = () => {
@@ -377,6 +426,35 @@ const loadAdminToolbar = () => {
                     }
                 }
                 
+                // Create logout button
+                const logoutButton = document.createElement('div');
+                logoutButton.id = 'admin-logout-button';
+                logoutButton.innerHTML = `
+                    <span>Logout</span>
+                `;
+                logoutButton.style.cssText = `
+                    position: fixed;
+                    bottom: 40px;
+                    right: 110px;
+                    z-index: 99999;
+                    align-items: center;
+                    background: red;
+                    color: white;
+                    padding: 14px 24px;
+                    border-radius: 12px;
+                    font-weight: 600;
+                    border: 0.5px solid #e2e8f0;
+                    box-shadow: 
+                        0 8px 24px rgba(0, 0, 0, 0.08),
+                        0 2px 8px rgba(0, 0, 0, 0.04);
+                    backdrop-filter: blur(8px);
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+                    font-size: 14px;
+                    cursor: pointer;
+                    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+                    display: ${window.isAuthenticated ? 'flex' : 'none'};
+                `;
+
                 // Create admin toolbar button beside the LintAI watermark
                 const adminButton = document.createElement('div');
                 adminButton.id = 'admin-toolbar-button';
@@ -385,28 +463,25 @@ const loadAdminToolbar = () => {
                 `;
                 adminButton.style.cssText = `
                     position: fixed;
-                    bottom: 90px;
+                    bottom: 40px;
                     right: 20px;
                     z-index: 99999;
-                    display: flex;
                     align-items: center;
-                    background: #161616;
-                    color: white;
-                    padding: 15px 28px;
-                    border-radius: 50px;
+                    background: #000000;
+                    color: #ffffff;
+                    padding: 14px 24px;
+                    border-radius: 12px;
                     font-weight: 600;
-                    letter-spacing: 0.5px;
+                    border: 1px solid #1a1a1a;
                     box-shadow: 
-                        0 4px 20px rgba(107, 70, 193, 0.4),
-                        0 0 0 1px rgba(255, 255, 255, 0.1),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.2);
-                    backdrop-filter: blur(20px);
+                        0 8px 24px rgba(0, 0, 0, 0.25),
+                        0 2px 8px rgba(0, 0, 0, 0.15);
+                    backdrop-filter: blur(8px);
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-                    font-size: 16px;
+                    font-size: 14px;
                     cursor: pointer;
-                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                    opacity: ${window.isAuthenticated ? 1 : 0};
-                    pointer-events: ${window.isAuthenticated ? 'auto' : 'none'};
+                    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+                    display: ${window.isAuthenticated ? 'flex' : 'none'};
                 `;
                 
                 // Create version history dropdown
@@ -414,30 +489,34 @@ const loadAdminToolbar = () => {
                 versionDropdown.id = 'version-history-dropdown';
                 versionDropdown.innerHTML = `
                     <select id="version-select" style="
-                        background: #161616;
-                        color: white;
-                        border: 1px solid rgba(255, 255, 255, 0.2);
-                        border-radius: 25px;
-                        padding: 8px 16px;
+                        background: #ffffff;
+                        color: #0f172a;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 8px;
+                        padding: 10px 14px;
                         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-                        font-size: 14px;
+                        font-size: 13px;
+                        font-weight: 500;
                         cursor: pointer;
                         outline: none;
-                        min-width: 120px;
+                        min-width: 140px;
+                        transition: all 0.2s ease;
+                        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
                     ">
                         <option value="">Loading...</option>
                     </select>
                 `;
                 versionDropdown.style.cssText = `
                     position: fixed;
-                    bottom: 20px;
-                    right: 20px;
+                    bottom: 40px;
+                    left: 20px;
                     z-index: 99999;
-                    display: flex;
+                    background: #000000;
+                    padding: 5px 5px;
+                    border-radius: 12px;
                     align-items: center;
                     gap: 10px;
-                    opacity: ${window.isAuthenticated ? 1 : 0};
-                    pointer-events: ${window.isAuthenticated ? 'auto' : 'none'};
+                    display: ${window.isAuthenticated ? 'flex' : 'none'};
                 `;
                 
                 // Create rollback button
@@ -446,32 +525,55 @@ const loadAdminToolbar = () => {
                 rollbackButton.innerHTML = '↺ Rollback';
                 rollbackButton.disabled = true;
                 rollbackButton.style.cssText = `
-                    background: #dc3545;
-                    color: white;
-                    border: none;
-                    border-radius: 20px;
-                    padding: 8px 16px;
+                    background: #ffffff;
+                    color: #ef4444;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 8px;
+                    padding: 10px 16px;
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-                    font-size: 14px;
+                    font-size: 13px;
                     font-weight: 600;
                     cursor: pointer;
-                    transition: all 0.3s ease;
+                    transition: all 0.2s ease;
                     opacity: 0.6;
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
                 `;
                 
                 versionDropdown.appendChild(rollbackButton);
                 
                 
-                // Add simple hover effect
+                // Add hover effect for logout button
+                logoutButton.addEventListener('mouseenter', () => {
+                    logoutButton.style.background = '#000000';
+                    logoutButton.style.color = '#ffffff';
+                    logoutButton.style.borderColor = '#1a1a1a';
+                    logoutButton.style.transform = 'translateY(-2px)';
+                    logoutButton.style.boxShadow = '0 12px 32px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.15)';
+                });
+                logoutButton.addEventListener('mouseleave', () => {
+                    logoutButton.style.background = 'red';
+                    logoutButton.style.color = 'white';
+                    logoutButton.style.borderColor = '#e2e8f0';
+                    logoutButton.style.transform = 'translateY(0px)';
+                    logoutButton.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04)';
+                });
+
+                // Add click handler for logout button
+                logoutButton.addEventListener('click', () => {
+                    console.log('🚪 Logout button clicked!');
+                    logoutAdmin();
+                });
+
+                // Add hover effect for edit button
                 adminButton.addEventListener('mouseenter', () => {
-                    adminButton.style.background = '#161616';
-                    adminButton.style.transform = 'scale(1.05) translateY(-2px)';
-                    adminButton.style.boxShadow = '0 8px 32px 0 0 0 1px #000000';
+                    adminButton.style.background = '#1a1a1a';
+                    adminButton.style.transform = 'translateY(-2px)';
+                    adminButton.style.boxShadow = '0 12px 32px rgba(0, 0, 0, 0.35), 0 4px 12px rgba(0, 0, 0, 0.25)';
                 });
                 adminButton.addEventListener('mouseleave', () => {
-                    adminButton.style.background = '#161616';
-                    adminButton.style.transform = 'scale(1) translateY(0px)';
-                    adminButton.style.boxShadow = '0 4px 20px 0 0 0 1px #000000';
+                    adminButton.style.background = '#000000';
+                    adminButton.style.transform = 'translateY(0px)';
+                    adminButton.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.25), 0 2px 8px rgba(0, 0, 0, 0.15)';
                 });
                 
                 // Add click handler to toggle toolbar
@@ -530,10 +632,11 @@ const loadAdminToolbar = () => {
                 
                 
                 
-                console.log('➕ Adding admin button to page...');
+                console.log('➕ Adding admin buttons to page...');
+                document.body.appendChild(logoutButton);
                 document.body.appendChild(adminButton);
                 document.body.appendChild(versionDropdown);
-                console.log('✅ Admin button and version controls added successfully');
+                console.log('✅ Admin buttons and version controls added successfully');
                 
                 // Load version history and setup event listeners after loading
                 console.log('🎯 About to call loadVersionHistory...');
@@ -549,6 +652,34 @@ const loadAdminToolbar = () => {
                         console.log('🔍 Rollback button found:', !!rollbackBtn);
                         
                         if (versionSelect && rollbackBtn) {
+                            // Add hover effects for select dropdown
+                            versionSelect.addEventListener('mouseenter', function() {
+                                this.style.borderColor = '#cbd5e1';
+                                this.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.08)';
+                            });
+                            versionSelect.addEventListener('mouseleave', function() {
+                                this.style.borderColor = '#e2e8f0';
+                                this.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.04)';
+                            });
+
+                            // Add hover effects for rollback button
+                            rollbackBtn.addEventListener('mouseenter', function() {
+                                if (!this.disabled) {
+                                    this.style.background = '#fee2e2';
+                                    this.style.borderColor = '#fca5a5';
+                                    this.style.transform = 'translateY(-1px)';
+                                    this.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.08)';
+                                }
+                            });
+                            rollbackBtn.addEventListener('mouseleave', function() {
+                                if (!this.disabled) {
+                                    this.style.background = '#fef2f2';
+                                    this.style.borderColor = '#fecaca';
+                                    this.style.transform = 'translateY(0)';
+                                    this.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.04)';
+                                }
+                            });
+
                             versionSelect.addEventListener('change', function() {
                                 const selectedTag = this.value;
                                 
@@ -559,13 +690,17 @@ const loadAdminToolbar = () => {
                                     rollbackBtn.disabled = false;
                                     rollbackBtn.style.opacity = '1';
                                     rollbackBtn.style.cursor = 'pointer';
-                                    rollbackBtn.style.background = '#dc3545';
+                                    rollbackBtn.style.background = '#fef2f2';
+                                    rollbackBtn.style.borderColor = '#fecaca';
+                                    rollbackBtn.style.color = '#dc2626';
                                 } else {
                                     console.log('❌ Disabling rollback button');
                                     rollbackBtn.disabled = true;
                                     rollbackBtn.style.opacity = '0.6';
                                     rollbackBtn.style.cursor = 'not-allowed';
-                                    rollbackBtn.style.background = '#6c757d';
+                                    rollbackBtn.style.background = '#f8fafc';
+                                    rollbackBtn.style.borderColor = '#e2e8f0';
+                                    rollbackBtn.style.color = '#94a3b8';
                                 }
                             });
                             console.log('✅ Version change listener added successfully');
@@ -633,10 +768,9 @@ const loadAdminToolbar = () => {
                 // Function to show admin UI elements
                 window.showAdminUI = function() {
                     console.log('🔧 Showing admin UI elements...');
-                    adminButton.style.opacity = '1';
-                    adminButton.style.pointerEvents = 'auto';
-                    versionDropdown.style.opacity = '1';
-                    versionDropdown.style.pointerEvents = 'auto';
+                    logoutButton.style.display = 'flex';
+                    adminButton.style.display = 'flex';
+                    versionDropdown.style.display = 'flex';
                     console.log('✅ Admin UI elements are now visible');
                 };
                 
@@ -668,9 +802,12 @@ if (isAdminMode) {
     console.log('🔧 Admin mode detected - initializing toolbar...');
     console.log('🔍 Current URL:', window.location.href);
     console.log('🔍 Pathname:', window.location.pathname);
+    console.log('🔍 Already authenticated:', window.isAuthenticated);
     
-    // Show authentication modal first
-    showAuthModal();
+    // Show authentication modal only if not already authenticated
+    if (!window.isAuthenticated) {
+        showAuthModal();
+    }
     
     // Load when DOM is ready
     if (document.readyState === 'loading') {

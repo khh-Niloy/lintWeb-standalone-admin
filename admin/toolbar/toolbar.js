@@ -641,27 +641,29 @@ class AdminToolbar {
         const style = document.createElement('style');
         style.id = styleId;
         style.textContent = `
-            /* Simple Admin Toolbar - Clean White Design */
+            /* Modern Admin Toolbar - Minimal Clean Design */
             .admin-toolbar-popup {
                 position: fixed;
-                bottom: 60px;
-                right: 10px;
-                width: 350px;
-                max-height: 500px;
-                background: #ffffff !important;
-                border: 1px solid #e5e7eb;
-                border-radius: 16px;
+                bottom: 110px;
+                right: 20px;
+                width: 360px;
+                max-height: 520px;
+                background: #ffffff;
+                border: 1px solid #f1f5f9;
+                border-radius: 12px;
                 box-shadow: 
-                    0 25px 50px rgba(0, 0, 0, 0.1),
-                    0 8px 32px rgba(0, 0, 0, 0.08);
+                    0 20px 40px rgba(0, 0, 0, 0.04),
+                    0 4px 16px rgba(0, 0, 0, 0.02),
+                    0 0 0 0.5px rgba(0, 0, 0, 0.03);
                 z-index: 99999;
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
                 font-size: 14px;
-                transform: translateY(100%) scale(0.9);
+                transform: translateY(100%) scale(0.96);
                 opacity: 0;
-                transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+                transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
                 pointer-events: none;
                 overflow: hidden;
+                backdrop-filter: blur(8px);
             }
             
 
@@ -670,7 +672,7 @@ class AdminToolbar {
                 transform: translateY(0) scale(1);
                 opacity: 1;
                 pointer-events: auto;
-                animation: slideUpFadeIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+                animation: slideUpFadeIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
             }
             
             .admin-toolbar-popup * {
@@ -685,7 +687,7 @@ class AdminToolbar {
             
             @keyframes slideUpFadeIn {
                 0% {
-                    transform: translateY(100%) scale(0.9);
+                    transform: translateY(100%) scale(0.96);
                     opacity: 0;
                 }
                 100% {
@@ -695,72 +697,79 @@ class AdminToolbar {
             }
             
             .admin-toolbar-popup.loading {
-                border-color: rgba(59, 130, 246, 0.4);
-                background: #ffffff !important;
+                border-color: #e2e8f0;
+                box-shadow: 
+                    0 20px 40px rgba(59, 130, 246, 0.08),
+                    0 4px 16px rgba(59, 130, 246, 0.04),
+                    0 0 0 0.5px rgba(59, 130, 246, 0.1);
             }
             
             .admin-toolbar-popup.success {
-                border-color: rgba(16, 185, 129, 0.4);
-                background: #ffffff !important;
+                border-color: #e2e8f0;
+                box-shadow: 
+                    0 20px 40px rgba(34, 197, 94, 0.08),
+                    0 4px 16px rgba(34, 197, 94, 0.04),
+                    0 0 0 0.5px rgba(34, 197, 94, 0.1);
             }
             
             .admin-toolbar-popup.error {
-                border-color: rgba(239, 68, 68, 0.4);
-                background: #ffffff !important;
+                border-color: #e2e8f0;
+                box-shadow: 
+                    0 20px 40px rgba(239, 68, 68, 0.08),
+                    0 4px 16px rgba(239, 68, 68, 0.04),
+                    0 0 0 0.5px rgba(239, 68, 68, 0.1);
             }
             
             
             .toolbar-popup-content {
-                padding: 20px;
+                padding: 24px;
                 display: flex;
                 flex-direction: column;
-                gap: 16px;
-                max-height: 460px;
+                gap: 20px;
+                max-height: 480px;
                 overflow-y: auto;
                 position: relative;
                 z-index: 1;
             }
             
             .toolbar-popup-content h4 {
-                margin: 0 0 8px 0;
-                font-size: 14px;
+                margin: 0 0 12px 0;
+                font-size: 15px;
                 font-weight: 600;
-                color: #1e293b;
-                background:rgb(255, 255, 255);
-                padding: 8px 12px;
-                border-radius: 8px;
-                border: 1px solid #e2e8f0;
+                color: #0f172a;
+                letter-spacing: -0.025em;
             }
             
 
             
             .close-btn {
                 position: absolute;
-                top: 8px;
-                right: 8px;
-                width: 32px;
-                height: 32px;
+                top: 12px;
+                right: 12px;
+                width: 28px;
+                height: 28px;
                 padding: 0;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                background: #f1f5f9 !important;
-                border: 1px solid #cbd5e1 !important;
-                color: #64748b !important;
-                border-radius: 8px !important;
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+                color: #64748b;
+                border-radius: 6px;
                 cursor: pointer;
                 transition: all 0.2s ease;
-                font-size: 12px;
+                font-size: 11px;
             }
             
             .close-btn:hover {
-                background: #e2e8f0 !important;
-                color: #475569 !important;
+                background: #f1f5f9;
+                color: #334155;
+                transform: scale(1.05);
             }
             
             .selected-elements-section {
-                border-bottom: 1px solid #e2e8f0;
-                padding-bottom: 16px;
+                border-bottom: 1px solid #f1f5f9;
+                padding-bottom: 20px;
             }
             
             .selected-elements-container {
@@ -769,84 +778,86 @@ class AdminToolbar {
             }
             
             .no-elements {
-                color: #64748b;
-                font-style: italic;
-                font-size: 12px;
-                padding: 12px;
+                color: #94a3b8;
+                font-size: 13px;
+                padding: 16px;
                 text-align: center;
-                background: #f8fafc;
-                border: 1px solid #e2e8f0;
-                border-radius: 8px;
+                background: #fafbfc;
+                border: 1px solid #f1f5f9;
+                border-radius: 10px;
+                font-weight: 500;
             }
             
             .selected-element {
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                padding: 10px 14px;
-                background: #eff6ff;
-                border: 1px solid #bfdbfe;
-                border-radius: 10px;
-                margin-bottom: 8px;
-                font-size: 12px;
-                box-shadow: 0 4px 8px rgba(59, 130, 246, 0.1);
+                padding: 12px 16px;
+                background: #fbfcfd;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                margin-bottom: 10px;
+                font-size: 13px;
                 transition: all 0.2s ease;
                 cursor: pointer;
             }
             
             .selected-element:hover {
-                background: #dbeafe;
-                border-color: #93c5fd;
+                background: #f8fafc;
+                border-color: #cbd5e1;
                 transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
             }
             
             .selected-element.editing {
-                background: #dcfce7;
-                border: 1px solid #86efac;
-                box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+                background: #f0fdf4;
+                border: 1px solid #bbf7d0;
+                box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.08);
             }
             
             .edit-mode-section {
-                border-bottom: 1px solid #e2e8f0;
-                padding-bottom: 16px;
-                margin-bottom: 16px;
+                border-bottom: 1px solid #f1f5f9;
+                padding-bottom: 20px;
             }
             
             .edit-mode-toggle {
                 display: flex;
                 background: #f8fafc;
-                border-radius: 8px;
-                padding: 4px;
-                gap: 2px;
+                border-radius: 10px;
+                padding: 6px;
+                gap: 4px;
+                border: 1px solid #f1f5f9;
             }
             
             .toggle-btn {
                 flex: 1;
-                padding: 8px 12px;
+                padding: 10px 14px;
                 border: none;
-                border-radius: 6px;
+                border-radius: 8px;
                 background: transparent;
                 color: #64748b;
-                font-size: 11px;
+                font-size: 12px;
                 font-weight: 500;
                 cursor: pointer;
                 transition: all 0.2s ease;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                gap: 4px;
+                gap: 6px;
             }
             
             .toggle-btn:hover {
-                background: #e2e8f0;
+                background: #f1f5f9;
                 color: #475569;
             }
             
             .toggle-btn.active {
-                background: #eff6ff;
-                border: 1px solid #bfdbfe;
-                color: #3b82f6;
-                box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
+                background: #ffffff;
+                color: #0f172a;
+                box-shadow: 
+                    0 2px 4px rgba(0, 0, 0, 0.04),
+                    0 0 0 1px rgba(0, 0, 0, 0.06);
+                font-weight: 600;
             }
             
             .element-info {
@@ -856,23 +867,25 @@ class AdminToolbar {
             
             .element-tag {
                 font-weight: 600;
-                color: #3b82f6;
+                color: #475569;
                 font-size: 11px;
-                background: #eff6ff;
-                padding: 2px 6px;
-                border-radius: 4px;
-                border: 1px solid #bfdbfe;
+                background: #f1f5f9;
+                padding: 3px 8px;
+                border-radius: 6px;
+                border: 1px solid #e2e8f0;
                 display: inline-block;
+                letter-spacing: 0.025em;
             }
             
             .element-text {
-                color: #374151;
-                margin-top: 4px;
-                font-size: 11px;
+                color: #334155;
+                margin-top: 6px;
+                font-size: 12px;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
                 font-weight: 500;
+                line-height: 1.4;
             }
             
             .element-actions {
@@ -882,9 +895,9 @@ class AdminToolbar {
             }
             
             .btn-remove {
-                background: #fef2f2;
-                border: 1px solid #fecaca;
-                color: #dc2626;
+                background: #fafbfc;
+                border: 1px solid #e2e8f0;
+                color: #ef4444;
                 border-radius: 6px;
                 padding: 6px 8px;
                 cursor: pointer;
@@ -893,21 +906,22 @@ class AdminToolbar {
             }
             
             .btn-remove:hover {
-                background: #fee2e2;
-                transform: translateY(-1px);
+                background: #fef2f2;
+                border-color: #fecaca;
+                transform: scale(1.05);
             }
             
             .text-editing-section, .ai-edit-section {
-                border: 1px solid #bbf7d0;
+                border: 1px solid #e2e8f0;
                 border-radius: 12px;
-                padding: 16px;
-                background: #f0fdf4;
+                padding: 20px;
+                background: #fafbfc;
                 position: relative;
             }
             
             .ai-edit-section {
-                border-color: #c4b5fd;
-                background: #faf5ff;
+                border-color: #e2e8f0;
+                background: #fafbfc;
             }
             
             .text-edit-hint {
@@ -926,23 +940,26 @@ class AdminToolbar {
             
             .text-edit-input, .edit-input {
                 width: 100%;
-                padding: 12px;
-                border: 1px solid #cbd5e1;
-                border-radius: 8px;
+                padding: 14px 16px;
+                border: 1px solid #e2e8f0;
+                border-radius: 10px;
                 background: #ffffff;
-                color: #1e293b;
-                font-size: 12px;
+                color: #0f172a;
+                font-size: 13px;
                 font-family: inherit;
                 resize: vertical;
-                min-height: 60px;
+                min-height: 68px;
                 transition: all 0.2s ease;
                 outline: none;
-                margin-bottom: 8px;
+                margin-bottom: 12px;
+                line-height: 1.5;
             }
             
             .text-edit-input:focus, .edit-input:focus {
-                border-color: #16a34a;
-                box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+                border-color: #94a3b8;
+                box-shadow: 
+                    0 0 0 3px rgba(148, 163, 184, 0.1),
+                    0 2px 8px rgba(0, 0, 0, 0.04);
             }
             
             .text-edit-actions {
@@ -952,49 +969,51 @@ class AdminToolbar {
             
             .text-edit-btn {
                 flex: 1;
-                padding: 9px 12px;
+                padding: 11px 16px;
                 border: none;
                 border-radius: 8px;
                 cursor: pointer;
-                font-size: 11px;
-                font-weight: 500;
+                font-size: 12px;
+                font-weight: 600;
                 transition: all 0.2s ease;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                gap: 4px;
+                gap: 6px;
             }
             
             .text-edit-btn.save-btn {
-                background: linear-gradient(135deg, #16a34a, #15803d);
+                background: #0f172a;
                 color: white;
             }
             
             .text-edit-btn.save-btn:hover {
-                background: linear-gradient(135deg, #15803d, #166534);
+                background: #1e293b;
                 transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             }
             
             .text-edit-btn.cancel-text {
-                background: rgba(148, 163, 184, 0.08);
-                border: 1px solid rgba(148, 163, 184, 0.15);
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
                 color: #64748b;
             }
             
             .text-edit-btn.cancel-text:hover {
-                background: rgba(148, 163, 184, 0.15);
+                background: #f1f5f9;
+                color: #475569;
             }
             
             .edit-submit-btn {
                 width: 100%;
-                background: linear-gradient(135deg, #9333ea, #7c3aed);
+                background: #0f172a;
                 border: none;
                 border-radius: 10px;
-                padding: 12px 18px;
+                padding: 14px 18px;
                 cursor: pointer;
                 color: white;
-                font-size: 12px;
-                font-weight: 500;
+                font-size: 13px;
+                font-weight: 600;
                 transition: all 0.2s ease;
                 display: flex;
                 align-items: center;
@@ -1003,8 +1022,9 @@ class AdminToolbar {
             }
             
             .edit-submit-btn:hover {
-                background: linear-gradient(135deg, #7c3aed, #6d28d9);
+                background: #1e293b;
                 transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             }
             
             .toolbar-actions {
@@ -1016,28 +1036,30 @@ class AdminToolbar {
                 display: flex;
                 align-items: center;
                 gap: 8px;
-                padding: 12px 18px;
-                background: #eff6ff;
-                border: 1px solid #bfdbfe;
-                color: #3b82f6;
+                padding: 14px 20px;
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+                color: #334155;
                 border-radius: 10px;
                 cursor: pointer;
                 transition: all 0.2s ease;
-                font-size: 12px;
-                font-weight: 500;
+                font-size: 13px;
+                font-weight: 600;
                 flex: 1;
                 justify-content: center;
             }
             
             .toolbar-btn:hover {
-                background: #dbeafe;
+                background: #f1f5f9;
                 transform: translateY(-1px);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
             }
             
             .toolbar-btn.active {
-                background: #dcfce7;
-                border-color: #86efac;
-                color: #16a34a;
+                background: #0f172a;
+                border-color: #334155;
+                color: white;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             }
             
             /* Element Selection Styles */
@@ -1064,21 +1086,23 @@ class AdminToolbar {
             /* Status Display */
             .admin-status-display {
                 position: fixed;
-                bottom: 20px;
-                left: 20px;
-                background: #0f172a;
-                color: white;
-                padding: 12px 16px;
-                border-radius: 8px;
+                top: 20px;
+                right: 20px;
+                background: #ffffff;
+                color: #0f172a;
+                padding: 14px 18px;
+                border-radius: 10px;
                 font-size: 13px;
                 font-weight: 500;
                 z-index: 99998;
-                transform: translateY(100px);
+                transform: translateY(-100px);
                 opacity: 0;
-                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
                 pointer-events: none;
-                max-width: 300px;
-                border: 1px solid #334155;
+                max-width: 320px;
+                border: 1px solid #e2e8f0;
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+                backdrop-filter: blur(8px);
             }
             
             .admin-status-display.visible {
@@ -1087,23 +1111,27 @@ class AdminToolbar {
             }
             
             .admin-status-display.success {
-                background: #16a34a;
-                border-color: #22c55e;
+                background: #f0fdf4;
+                border-color:rgb(141, 254, 181);
+                color: #166534;
             }
             
             .admin-status-display.error {
-                background: #dc2626;
-                border-color: #ef4444;
+                background: #fef2f2;
+                border-color: #fecaca;
+                color: #dc2626;
             }
             
             .admin-status-display.loading {
-                background: #2563eb;
-                border-color: #3b82f6;
+                background: #eff6ff;
+                border-color: #bfdbfe;
+                color: #1d4ed8;
             }
             
             .admin-status-display.info {
-                background: #0891b2;
-                border-color: #06b6d4;
+                background: #f0f9ff;
+                border-color: #bae6fd;
+                color: #0c4a6e;
             }
             
             /* Batch Edit Options */

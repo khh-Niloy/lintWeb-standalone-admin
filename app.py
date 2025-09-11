@@ -58,10 +58,94 @@ def get_next_version_tag():
         return "v1"
 
 
-def commit_and_tag_changes(description: str):
-    """Commit changes and create version tag following git.txt instructions"""
+def generate_smart_commit_message(project_path):
+    """Generate smart commit message by analyzing git changes"""
+    try:
+        # Get staged changes
+        result = subprocess.run(['git', 'diff', '--cached', '--name-only'], capture_output=True, text=True, timeout=10, cwd=project_path)
+        if result.returncode != 0 or not result.stdout.strip():
+            return "Update content"
+        
+        files = [f.strip() for f in result.stdout.strip().split('\n') if f.strip()]
+        
+        # Categorize changes
+        html_files = [f for f in files if f.endswith('.html')]
+        
+        # Generate message
+        if len(html_files) == 1:
+            filename = html_files[0].replace('.html', '').replace('index', 'homepage')
+            return f"Update {filename}"
+        elif len(html_files) > 1:
+            return f"Update {len(html_files)} pages"
+        elif files:
+            return "Update assets"
+        else:
+            return "Update content"
+            
+    except Exception as e:
+        logger.error(f"Error generating commit message: {e}")
+        return "Update content"
+
+
+# def commit_and_tag_changes(description: str):
+#     """Commit changes and create version tag following git.txt instructions"""
+#     try:
+#         PROJECT_PATH = "projects/jbswebpage"
+#         # Ensure we're on main branch
+#         subprocess.run(['git', 'checkout', 'main'], capture_output=True, text=True, timeout=10, cwd=PROJECT_PATH)
+        
+#         # Stage all changes
+#         result = subprocess.run(['git', 'add', '.'], capture_output=True, text=True, timeout=10, cwd=PROJECT_PATH)
+#         if result.returncode != 0:
+#             logger.error(f"Git add failed: {result.stderr}")
+#             return False, f"Git add failed: {result.stderr}"
+        
+#         # Get next version tag
+#         next_tag = get_next_version_tag()
+        
+#         # Commit changes
+#         commit_message = f"{description}"
+#         result = subprocess.run(['git', 'commit', '-m', commit_message], capture_output=True, text=True, timeout=15, cwd=PROJECT_PATH)
+#         if result.returncode != 0:
+#             if "nothing to commit" in result.stdout:
+#                 return True, "No changes to commit"
+#             logger.error(f"Git commit failed: {result.stderr}")
+#             return False, f"Git commit failed: {result.stderr}"
+        
+#         # Create version tag
+#         result = subprocess.run(['git', 'tag', next_tag], capture_output=True, text=True, timeout=10, cwd=PROJECT_PATH)
+#         if result.returncode != 0:
+#             logger.error(f"Git tag failed: {result.stderr}")
+#             return False, f"Git tag failed: {result.stderr}"
+        
+#         # Push to origin with tags
+#         result = subprocess.run(['git', 'push', 'origin', 'main', '--tags'], capture_output=True, text=True, timeout=30, cwd=PROJECT_PATH)
+#         if result.returncode != 0:
+#             logger.warning(f"Git push failed: {result.stderr}")
+#             # Continue even if push fails (might be network issue)
+        
+#         return True, f"Successfully committed and tagged as {next_tag}"
+#     except Exception as e:
+#         logger.error(f"Error in commit_and_tag_changes: {e}")
+#         return False, f"Git operation failed: {str(e)}"
+
+
+@app.route("/api/publish", methods=["POST"])
+def publish_changes():
+    """Commit and push all changes to GitHub with version tagging for rollbacks"""
     try:
         PROJECT_PATH = "projects/jbswebpage"
+        
+        # Check if there are any changes to commit
+        status_result = subprocess.run(['git', 'status', '--porcelain'], capture_output=True, text=True, timeout=10, cwd=PROJECT_PATH)
+        if status_result.returncode != 0:
+            logger.error(f"Git status failed: {status_result.stderr}")
+            return jsonify({"success": False, "error": f"Git status failed: {status_result.stderr}"}), 500
+        
+        if not status_result.stdout.strip():
+            logger.info("No changes to publish")
+            return jsonify({"success": True, "message": "No changes to publish"})
+        
         # Ensure we're on main branch
         subprocess.run(['git', 'checkout', 'main'], capture_output=True, text=True, timeout=10, cwd=PROJECT_PATH)
         
@@ -69,37 +153,36 @@ def commit_and_tag_changes(description: str):
         result = subprocess.run(['git', 'add', '.'], capture_output=True, text=True, timeout=10, cwd=PROJECT_PATH)
         if result.returncode != 0:
             logger.error(f"Git add failed: {result.stderr}")
-            return False, f"Git add failed: {result.stderr}"
+            return jsonify({"success": False, "error": f"Git add failed: {result.stderr}"}), 500
         
         # Get next version tag
         next_tag = get_next_version_tag()
         
-        # Commit changes
-        commit_message = f"{description}"
+        # Generate smart commit message by analyzing changes
+        commit_message = generate_smart_commit_message(PROJECT_PATH)
         result = subprocess.run(['git', 'commit', '-m', commit_message], capture_output=True, text=True, timeout=15, cwd=PROJECT_PATH)
         if result.returncode != 0:
             if "nothing to commit" in result.stdout:
-                return True, "No changes to commit"
+                return jsonify({"success": True, "message": "No changes to commit"})
             logger.error(f"Git commit failed: {result.stderr}")
-            return False, f"Git commit failed: {result.stderr}"
+            return jsonify({"success": False, "error": f"Git commit failed: {result.stderr}"}), 500
         
         # Create version tag
         result = subprocess.run(['git', 'tag', next_tag], capture_output=True, text=True, timeout=10, cwd=PROJECT_PATH)
         if result.returncode != 0:
             logger.error(f"Git tag failed: {result.stderr}")
-            return False, f"Git tag failed: {result.stderr}"
+            return jsonify({"success": False, "error": f"Git tag failed: {result.stderr}"}), 500
         
         # Push to origin with tags
         result = subprocess.run(['git', 'push', 'origin', 'main', '--tags'], capture_output=True, text=True, timeout=30, cwd=PROJECT_PATH)
         if result.returncode != 0:
-            logger.warning(f"Git push failed: {result.stderr}")
-            # Continue even if push fails (might be network issue)
+            logger.error(f"Git push failed: {result.stderr}")
+            return jsonify({"success": False, "error": f"Push failed: {result.stderr}"}), 500
         
-        return True, f"Successfully committed and tagged as {next_tag}"
+        return jsonify({"success": True, "message": f"Successfully published all changes to GitHub as {next_tag}"})
     except Exception as e:
-        logger.error(f"Error in commit_and_tag_changes: {e}")
-        return False, f"Git operation failed: {str(e)}"
-
+        logger.exception("publish_changes error")
+        return jsonify({"success": False, "error": f"Publish failed: {str(e)}"}), 500
 
 
 # 🟢 git tag and git push +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -120,7 +203,7 @@ def commit_and_tag_changes(description: str):
 
 
 def get_version_history():
-    """Get list of version tags with commit info"""
+    """Get list of version tags with commit info, including initial state option"""
     try:
         PROJECT_PATH = "projects/jbswebpage"
         # Get all tags
@@ -133,6 +216,29 @@ def get_version_history():
         version_tags.sort(key=lambda x: int(x[1:]), reverse=True)  # Sort by version number, newest first
         
         history = []
+        
+        # Add "Initial State" option if there are any version tags
+        if version_tags:
+            # Get the commit before the first version tag (v1)
+            first_tag = sorted(version_tags, key=lambda x: int(x[1:]))[0]  # Get v1, v2, etc. in ascending order
+            try:
+                # Get the commit before the first tag
+                result = subprocess.run([
+                    'git', 'log', '--format=%H|%s|%ai', f'{first_tag}^1', '-1'
+                ], capture_output=True, text=True, timeout=10, cwd=PROJECT_PATH)
+                
+                if result.returncode == 0 and result.stdout.strip():
+                    commit_hash, message, date = result.stdout.strip().split('|', 2)
+                    history.append({
+                        'tag': 'initial',
+                        'message': 'Initial State (before any versions)',
+                        'date': date,
+                        'hash': commit_hash[:8]
+                    })
+            except Exception as e:
+                logger.warning(f"Could not get initial state commit: {e}")
+        
+        # Add all version tags
         for tag in version_tags:
             # Get commit info for tag
             result = subprocess.run([
@@ -185,22 +291,48 @@ def version_history():
 
 
 def rollback_to_version(tag: str):
-    """Rollback to specific version tag following git.txt instructions"""
+    """Rollback to specific version tag or initial state following git.txt instructions"""
     try:
         PROJECT_PATH = "projects/jbswebpage"
         # Ensure we're on main branch
         subprocess.run(['git', 'checkout', 'main'], capture_output=True, text=True, timeout=10, cwd=PROJECT_PATH)
         
-        # Verify tag exists
-        result = subprocess.run(['git', 'tag', '--list', tag], capture_output=True, text=True, timeout=10, cwd=PROJECT_PATH)
-        if result.returncode != 0 or not result.stdout.strip():
-            return False, f"Tag {tag} not found"
-        
-        # Reset branch to desired version tag
-        result = subprocess.run(['git', 'reset', '--hard', tag], capture_output=True, text=True, timeout=15, cwd=PROJECT_PATH)
-        if result.returncode != 0:
-            logger.error(f"Git reset failed: {result.stderr}")
-            return False, f"Git reset failed: {result.stderr}"
+        if tag == 'initial':
+            # Special handling for initial state - rollback to commit before first version tag
+            # Get the first version tag
+            result = subprocess.run(['git', 'tag', '--list'], capture_output=True, text=True, timeout=10, cwd=PROJECT_PATH)
+            if result.returncode != 0:
+                return False, "Could not get tag list"
+            
+            tags = result.stdout.strip().split('\n') if result.stdout.strip() else []
+            version_tags = [tag for tag in tags if tag.startswith('v') and tag[1:].isdigit()]
+            
+            if not version_tags:
+                return False, "No version tags found"
+            
+            # Get the first tag (v1)
+            first_tag = sorted(version_tags, key=lambda x: int(x[1:]))[0]
+            
+            # Reset to commit before first tag
+            result = subprocess.run(['git', 'reset', '--hard', f'{first_tag}^1'], capture_output=True, text=True, timeout=15, cwd=PROJECT_PATH)
+            if result.returncode != 0:
+                logger.error(f"Git reset to initial state failed: {result.stderr}")
+                return False, f"Git reset to initial state failed: {result.stderr}"
+            
+            rollback_message = "Successfully rolled back to initial state (before any versions)"
+        else:
+            # Verify tag exists
+            result = subprocess.run(['git', 'tag', '--list', tag], capture_output=True, text=True, timeout=10, cwd=PROJECT_PATH)
+            if result.returncode != 0 or not result.stdout.strip():
+                return False, f"Tag {tag} not found"
+            
+            # Reset branch to desired version tag
+            result = subprocess.run(['git', 'reset', '--hard', tag], capture_output=True, text=True, timeout=15, cwd=PROJECT_PATH)
+            if result.returncode != 0:
+                logger.error(f"Git reset failed: {result.stderr}")
+                return False, f"Git reset failed: {result.stderr}"
+            
+            rollback_message = f"Successfully rolled back to {tag}"
         
         # Force push to origin
         result = subprocess.run(['git', 'push', 'origin', 'main', '--force'], capture_output=True, text=True, timeout=30, cwd=PROJECT_PATH)
@@ -208,7 +340,7 @@ def rollback_to_version(tag: str):
             logger.warning(f"Git push failed: {result.stderr}")
             # Continue even if push fails
         
-        return True, f"Successfully rolled back to {tag}"
+        return True, rollback_message
     except Exception as e:
         logger.error(f"Error in rollback_to_version: {e}")
         return False, f"Rollback failed: {str(e)}"
@@ -229,8 +361,8 @@ def rollback():
         if not tag:
             return jsonify({"success": False, "error": "Missing tag parameter"}), 400
         
-        if not tag.startswith('v') or not tag[1:].isdigit():
-            return jsonify({"success": False, "error": "Invalid tag format. Expected format: v1, v2, v3, etc."}), 400
+        if tag != 'initial' and (not tag.startswith('v') or not tag[1:].isdigit()):
+            return jsonify({"success": False, "error": "Invalid tag format. Expected format: v1, v2, v3, etc. or 'initial'"}), 400
         
         rollback_success, rollback_message = rollback_to_version(tag)
         
@@ -294,12 +426,23 @@ def direct_text_edit():
             return jsonify({"success": False, "error": "Missing url, elementSelector, newText"}), 400
 
         parts = url.strip("/").split("/")
-        if len(parts) < 2 or not parts[0].startswith("user_"):
+        logger.info(f"Direct text edit - URL: {url}, Parts: {parts}")
+        
+        # Handle both formats: /user_xxx/project and /project
+        if len(parts) >= 2 and parts[0].startswith("user_"):
+            # Format: /user_xxx/project_name
+            user_dir = parts[0]
+            project_dir = parts[1]
+            project_path = safe_join_projects(f"{user_dir}/{project_dir}")
+            logger.info(f"Using user format - Path: {project_path}")
+        elif len(parts) >= 1 and parts[0]:  # Check if first part is not empty
+            # Format: /project_name (direct project)
+            project_dir = parts[0]
+            project_path = safe_join_projects(project_dir)
+            logger.info(f"Using direct format - Path: {project_path}")
+        else:
+            logger.error(f"Cannot parse URL: {url}, parts: {parts}")
             return jsonify({"success": False, "error": "Cannot determine project path from URL"}), 400
-
-        user_dir = parts[0]
-        project_dir = parts[1]
-        project_path = safe_join_projects(f"{user_dir}/{project_dir}")
 
         if parts[-1].endswith(".html"):
             html_file_path = project_path / parts[-1]
@@ -329,15 +472,15 @@ def direct_text_edit():
 
         html_file_path.write_text(updated, encoding="utf-8")
         
-        # Commit and tag changes
-        git_success, git_message = commit_and_tag_changes(f"Direct text edit in {html_file_path.name}")
+        # Note: Changes are saved to file but not committed to git
+        # User will use "Save Changes" button to commit and push all edits at once
         
         response = {
             "success": True, 
             "message": f"Updated {html_file_path.name}", 
             "file_path": str(html_file_path),
-            "git_status": git_success,
-            "git_message": git_message
+            "git_status": False,
+            "git_message": "Changes saved locally (not committed)"
         }
         
         return jsonify(response)
@@ -346,6 +489,88 @@ def direct_text_edit():
         logger.exception("direct_text_edit error")
         return jsonify({"success": False, "error": f"Internal error: {e}"}), 500
 
+
+@app.route("/api/undo", methods=["POST"])
+def undo_changes():
+    """Undo all uncommitted changes by resetting to HEAD"""
+    try:
+        PROJECT_PATH = "projects/jbswebpage"
+        
+        # Check if there are any changes to undo
+        status_result = subprocess.run(['git', 'status', '--porcelain'], capture_output=True, text=True, timeout=10, cwd=PROJECT_PATH)
+        if status_result.returncode != 0:
+            logger.error(f"Git status failed: {status_result.stderr}")
+            return jsonify({"success": False, "error": f"Git status failed: {status_result.stderr}"}), 500
+        
+        if not status_result.stdout.strip():
+            logger.info("No changes to undo")
+            return jsonify({"success": True, "message": "No changes to undo"})
+        
+        # Reset all changes to HEAD (undo all uncommitted changes)
+        result = subprocess.run(['git', 'checkout', '--', '.'], capture_output=True, text=True, timeout=15, cwd=PROJECT_PATH)
+        if result.returncode != 0:
+            logger.error(f"Git checkout failed: {result.stderr}")
+            return jsonify({"success": False, "error": f"Undo failed: {result.stderr}"}), 500
+        
+        # Also remove any untracked files that might have been created
+        result = subprocess.run(['git', 'clean', '-fd'], capture_output=True, text=True, timeout=10, cwd=PROJECT_PATH)
+        if result.returncode != 0:
+            logger.warning(f"Git clean failed: {result.stderr}")
+            # Continue even if clean fails - checkout is the main operation
+        
+        return jsonify({"success": True, "message": "Successfully undid all uncommitted changes"})
+    except Exception as e:
+        logger.exception("undo_changes error")
+        return jsonify({"success": False, "error": f"Undo failed: {str(e)}"}), 500
+
+
+@app.route("/api/get-file-content", methods=["GET"])
+def get_file_content():
+    """Get current file content for preview after AI edit"""
+    try:
+        url = request.args.get('url')
+        if not url:
+            return jsonify({"success": False, "error": "URL parameter required"}), 400
+        
+        # Determine project path from URL
+        PROJECT_PATH = "projects/jbswebpage"
+        
+        # Parse URL to get file path
+        if url.startswith('/'):
+            url = url[1:]  # Remove leading slash
+        
+        if not url or url == '':
+            file_path = os.path.join(PROJECT_PATH, 'index.html')
+        else:
+            file_path = os.path.join(PROJECT_PATH, url)
+            if os.path.isdir(file_path):
+                file_path = os.path.join(file_path, 'index.html')
+            elif not file_path.endswith('.html'):
+                file_path += '.html'
+        
+        # Security check
+        file_path = os.path.abspath(file_path)
+        project_abs = os.path.abspath(PROJECT_PATH)
+        if not file_path.startswith(project_abs):
+            return jsonify({"success": False, "error": "Access denied"}), 403
+        
+        # Read file content
+        if not os.path.exists(file_path):
+            return jsonify({"success": False, "error": f"File not found: {file_path}"}), 404
+        
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        return jsonify({
+            "success": True, 
+            "content": content,
+            "file_path": file_path,
+            "url": url
+        })
+        
+    except Exception as e:
+        logger.exception("get_file_content error")
+        return jsonify({"success": False, "error": f"Failed to read file: {str(e)}"}), 500
 
 
 # 🔵 git direct text edit - manual editing +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -370,6 +595,63 @@ def direct_text_edit():
 
 
 
+
+def generate_qwen_suggestions_prompt(elements, user_request, batch_mode=False):
+    """Generate prompt for Qwen to provide text suggestions without file editing"""
+    
+    # Format selected elements with their current text
+    element_details = []
+    for i, el in enumerate(elements):
+        element_details.append(f"""
+Element {i+1}:
+- Tag: <{el.get('tag', 'unknown')}>
+- ID: {el.get('id', 'none')} 
+- Classes: {el.get('classes', 'none')}
+- Current Text: "{el.get('text', '')}"
+""")
+    
+    elements_context = "\n".join(element_details)
+    
+    batch_instruction = ""
+    if batch_mode and len(elements) > 1:
+        batch_instruction = f"""
+BATCH MODE: Provide suggestions for all {len(elements)} elements. Apply the user's request consistently to ALL selected elements.
+"""
+    
+    return f"""You are an AI assistant that provides text suggestions for HTML elements. The user has selected specific elements and wants to modify their text content.
+
+USER REQUEST: {user_request}
+
+SELECTED ELEMENTS:
+{elements_context}
+
+{batch_instruction}
+
+INSTRUCTIONS:
+1. Analyze the user's request and provide NEW TEXT suggestions for each element
+2. DO NOT edit files or make changes - only provide suggestions
+3. Return ONLY valid JSON in this exact format:
+
+{{
+  "status": "success",
+  "suggestions": [
+    {{
+      "element_index": 0,
+      "tag": "div",
+      "id": "element-id",
+      "classes": "class1 class2",
+      "original_text": "current text",
+      "suggested_text": "new suggested text"
+    }}
+  ]
+}}
+
+IMPORTANT: 
+- Preserve existing CSS classes and styling
+- Only modify the text content as requested
+- Provide natural, contextually appropriate suggestions
+- Return valid JSON only - no explanations or additional text
+"""
 
 def generate_qwen_edit_prompt(elements, user_request, target_file, batch_mode=False):
     """Generate optimized prompt for Qwen Code CLI with batch editing support"""
@@ -479,7 +761,7 @@ def admin_edit():
             logger.error("Qwen CLI not found in PATH")
             return jsonify({"success": False, "error": "Qwen CLI not found. Please install Qwen CLI and ensure it's in your PATH."}), 500
         
-        # Execute Qwen Code CLI with optimized parameters
+        # Execute AI editing with subprocess timeout
         import subprocess
         import json as json_lib
         
@@ -504,15 +786,16 @@ def admin_edit():
                 # Try to parse JSON response
                 response_data = json_lib.loads(result.stdout)
                 if response_data.get("status") == "success":
-                    # Commit and tag changes after successful AI edit
-                    git_success, git_message = commit_and_tag_changes(f"AI edit: {prompt[:50]}...")
+                    # Note: Changes are saved to file but not committed to git
+                    # User will use "Save Changes" button to commit and push all edits at once
                     
                     response = {
                         "success": True, 
                         "message": response_data.get("message", "AI changes applied successfully"),
                         "qwen_response": response_data,
-                        "git_status": git_success,
-                        "git_message": git_message
+                        "updated_elements": response_data.get("updated_elements", []),
+                        "git_status": False,
+                        "git_message": "Changes saved locally (not committed)"
                     }
                     
                     return jsonify(response)
@@ -526,15 +809,16 @@ def admin_edit():
                 # Fallback for non-JSON response
                 logger.warning("Qwen returned non-JSON response")
                 
-                # Commit and tag changes after successful AI edit
-                git_success, git_message = commit_and_tag_changes(f"AI edit: {prompt[:50]}...")
+                # Note: Changes are saved to file but not committed to git
+                # User will use "Save Changes" button to commit and push all edits at once
                 
                 response = {
                     "success": True,
                     "message": "AI changes applied successfully", 
                     "qwen_output": result.stdout[:500],
-                    "git_status": git_success,
-                    "git_message": git_message
+                    "updated_elements": [],  # Fallback for non-JSON response
+                    "git_status": False,
+                    "git_message": "Changes saved locally (not committed)"
                 }
                 
                 return jsonify(response)

@@ -123,6 +123,7 @@ class AdminToolbar {
 
         this.batchEditCheckbox = document.getElementById('batch-edit-mode');
         this.currentEditMode = 'text'; // Default to text edit mode
+        this.hasUnsavedEdits = false;
     }
     
     
@@ -168,6 +169,18 @@ class AdminToolbar {
         this.container.style.display = 'block';
         this.container.classList.add('visible');
         this.setState('idle');
+        
+        // Show save changes button when toolbar opens and ensure it's properly initialized
+        if (window.showSaveChangesButton) {
+            window.showSaveChangesButton();
+        }
+        if (window.showUndoButton) {
+            window.showUndoButton();
+        }
+        if (window.updateSaveChangesButton) {
+            window.updateSaveChangesButton();
+        }
+        
         console.log('✅ Toolbar shown');
     }
     
@@ -177,6 +190,15 @@ class AdminToolbar {
         this.container.classList.remove('visible');
         this.exitSelectMode();
         this.setState('idle');
+        
+        // Hide save changes button when toolbar closes
+        if (window.hideSaveChangesButton) {
+            window.hideSaveChangesButton();
+        }
+        if (window.hideUndoButton) {
+            window.hideUndoButton();
+        }
+        
         console.log('🔻 Toolbar hidden');
     }
     
@@ -349,6 +371,7 @@ class AdminToolbar {
         element.element.textContent = newText;
     }
     
+    
     async saveTextToFile() {
         if (this.editingIndex < 0) return;
         
@@ -382,6 +405,15 @@ class AdminToolbar {
                 this.renderSelected();
                 this.cancelTextEdit();
                 this.showStatus('✅ Saved to file successfully!', 'success');
+                
+                // Increment edit counter when user saves text edits
+                console.log('🔍 Checking for incrementEditCount function:', typeof window.incrementEditCount);
+                console.log('🔍 Current edit count:', window.editCount);
+                if (window.incrementEditCount) {
+                    window.incrementEditCount();
+                } else {
+                    console.error('❌ incrementEditCount function not found!');
+                }
             } else {
                 this.showStatus('❌ Failed to save: ' + (result.error || result.message), 'error');
             }
@@ -427,10 +459,21 @@ class AdminToolbar {
                 this.promptInput.value = '';
                 this.aiEditSection.style.display = 'none';
                 this.editingIndex = -1;
-                // Clear selections before reload
+                
+                // Increment edit counter when AI edits are made
+                console.log('🔍 AI Edit - Checking for incrementEditCount function:', typeof window.incrementEditCount);
+                console.log('🔍 AI Edit - Current edit count:', window.editCount);
+                if (window.incrementEditCount) {
+                    window.incrementEditCount();
+                } else {
+                    console.error('❌ AI Edit - incrementEditCount function not found!');
+                }
+                
+                // Clear selections after AI edit
                 this.selectedElements = [];
                 this.renderSelected();
-                // Refresh the page to show changes
+                
+                // Refresh the page to show AI changes
                 setTimeout(() => window.location.reload(), 1000);
             } else {
                 this.setState('error');
@@ -631,6 +674,7 @@ class AdminToolbar {
         
         console.log('📢', message);
     }
+    
     
 
     
@@ -1175,6 +1219,7 @@ class AdminToolbar {
                     max-width: none;
                 }
             }
+            
 
 
         `;

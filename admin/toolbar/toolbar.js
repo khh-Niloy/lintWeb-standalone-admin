@@ -440,9 +440,9 @@ class AdminToolbar {
         this.setState('loading');
         
         if (isBatchMode && this.selectedElements.length > 1) {
-            this.showStatus(`Processing AI request for ${this.selectedElements.length} elements...`, 'loading');
+            this.showStatus(`Generating preview for ${this.selectedElements.length} elements...`, 'loading');
         } else {
-            this.showStatus('Processing AI request...', 'loading');
+            this.showStatus('Generating AI preview...', 'loading');
         }
         
         try {
@@ -450,39 +450,264 @@ class AdminToolbar {
             const fullPrompt = this.generateBatchPrompt(prompt, elementsToEdit, isBatchMode);
             const result = await this.sendToBackend(fullPrompt, elementsToEdit);
             
-            if (result.success) {
+            if (result.success && result.is_selective_preview) {
                 this.setState('success');
-                const message = isBatchMode ? 
-                    `AI changes applied to ${elementsToEdit.length} elements successfully!` : 
-                    'AI changes applied successfully!';
-                this.showStatus(message, 'success');
-                this.promptInput.value = '';
-                this.aiEditSection.style.display = 'none';
-                this.editingIndex = -1;
+                this.showStatus('AI preview generated! Review changes on the page.', 'success');
                 
-                // Increment edit counter when AI edits are made
-                console.log('🔍 AI Edit - Checking for incrementEditCount function:', typeof window.incrementEditCount);
-                console.log('🔍 AI Edit - Current edit count:', window.editCount);
-                if (window.incrementEditCount) {
-                    window.incrementEditCount();
-                } else {
-                    console.error('❌ AI Edit - incrementEditCount function not found!');
-                }
+                // Show selective preview interface
+                this.showSelectivePreview(result, elementsToEdit);
                 
-                // Clear selections after AI edit
-                this.selectedElements = [];
-                this.renderSelected();
-                
-                // Refresh the page to show AI changes
-                setTimeout(() => window.location.reload(), 1000);
             } else {
                 this.setState('error');
-                this.showStatus(result.error || 'Failed to apply AI changes', 'error');
+                this.showStatus(result.error || 'Failed to generate AI preview', 'error');
             }
         } catch (error) {
             console.error('Error submitting prompt:', error);
             this.setState('error');
             this.showStatus('Error processing AI request', 'error');
+        }
+    }
+    
+    showSelectivePreview(result, elementsToEdit) {
+        console.log('🔍 Selective AI Preview Result:', result);
+        console.log('🔍 Element updates:', result.element_updates);
+        
+        // Store original content of each element for restore
+        this.originalElementContent = {};
+        
+        // Apply selective preview to specific elements only
+        this.applySelectivePreview(result.element_updates, elementsToEdit);
+        
+        // Show preview interface in toolbar
+        this.aiEditSection.innerHTML = `
+            <div class="ai-preview-content">
+                <h4>🔍 Selective Preview Active</h4>
+                <p class="preview-summary">${result.changes_summary || 'Changes are visible in the selected elements only.'}</p>
+                <div class="preview-elements-count">
+                    Updated ${result.element_updates.length} element(s)
+                </div>
+                
+                <div class="preview-actions">
+                    <button class="preview-btn save-ai-btn" id="save-ai-changes">
+                        💾 Save Changes
+                    </button>
+                    <button class="preview-btn discard-ai-btn" id="discard-ai-changes">
+                        ❌ Discard & Restore
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Store preview data for saving
+        this.currentPreview = {
+            element_updates: result.element_updates,
+            target_file: result.target_file,
+            project_path: result.project_path,
+            elementsToEdit: elementsToEdit
+        };
+        
+        console.log('🔍 Stored selective preview data:', this.currentPreview);
+        
+        // Attach event listeners
+        document.getElementById('save-ai-changes').addEventListener('click', () => this.saveSelectiveAIChanges());
+        document.getElementById('discard-ai-changes').addEventListener('click', () => this.discardSelectiveAIChanges());
+    }
+    
+    applySelectivePreview(elementUpdates, elementsToEdit) {
+        console.log('🔍 Applying selective preview to', elementUpdates.length, 'elements');
+        
+        try {
+            // Apply updates to each specific element
+            elementUpdates.forEach((update, index) => {
+                const elementIndex = update.element_index;
+                const newContent = update.new_content;
+                
+                // Get the corresponding selected element
+                const selectedElement = elementsToEdit[elementIndex];
+                if (!selectedElement || !selectedElement.element) {
+                    console.warn(`⚠️ Element ${elementIndex} not found in selected elements`);
+                    return;
+                }
+                
+                const domElement = selectedElement.element;
+                
+                // Store original content for restore functionality
+                this.originalElementContent[elementIndex] = {
+                    innerHTML: domElement.innerHTML,
+                    textContent: domElement.textContent
+                };
+                
+                // Apply the new content to this specific element
+                domElement.innerHTML = newContent;
+                
+                // Add visual indicator that this element is in preview mode
+                domElement.classList.add('admin-preview-active');
+                
+                console.log(`✅ Applied preview to element ${elementIndex}:`, domElement.tagName);
+            });
+            
+            this.showStatus(`✅ Preview applied to ${elementUpdates.length} element(s) - images and other content untouched!`, 'success');
+            
+        } catch (error) {
+            console.error('❌ Error applying selective preview:', error);
+            this.showStatus('❌ Error applying preview to selected elements', 'error');
+        }
+    }
+    
+    async saveSelectiveAIChanges() {
+        if (!this.currentPreview) {
+            this.showStatus('No preview data available', 'error');
+            return;
+        }
+        
+        this.showStatus('Saving AI changes to file...', 'loading');
+        
+        try {
+            const response = await fetch('/api/save-ai-changes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    element_updates: this.currentPreview.element_updates,
+                    target_file: this.currentPreview.target_file,
+                    project_path: this.currentPreview.project_path,
+                    elements: this.currentPreview.elementsToEdit.map(el => ({
+                        tag: el.tag,
+                        id: el.id,
+                        classes: el.classes,
+                        text: el.text,
+                        attributes: el.attributes
+                    }))
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.showStatus(`✅ AI changes saved! Updated ${result.updates_applied} element(s).`, 'success');
+                
+                // Increment edit counter when AI edits are saved
+                console.log('🔍 AI Edit Save - Checking for incrementEditCount function:', typeof window.incrementEditCount);
+                if (window.incrementEditCount) {
+                    window.incrementEditCount();
+                } else {
+                    console.error('❌ AI Edit Save - incrementEditCount function not found!');
+                }
+                
+                // Remove preview indicators from elements
+                this.removePreviewIndicators();
+                
+                // Clear preview data and restore normal UI
+                this.currentPreview = null;
+                this.originalElementContent = null;
+                
+                // Reset AI edit section to normal state
+                this.resetAIEditSection();
+                
+                // Clear selections and hide editing interface
+                this.selectedElements = [];
+                this.renderSelected();
+                this.aiEditSection.style.display = 'none';
+                this.editingIndex = -1;
+                
+                // Update status
+                this.showStatus('✅ AI changes saved! Use "Save Changes" button to commit to git.', 'success');
+            } else {
+                this.showStatus('❌ Failed to save AI changes: ' + (result.error || result.message), 'error');
+            }
+        } catch (error) {
+            this.showStatus('❌ Network error while saving', 'error');
+            console.error('Save selective AI changes error:', error);
+        }
+    }
+    
+    discardSelectiveAIChanges() {
+        console.log('🗑️ Discarding selective AI preview...');
+        
+        try {
+            // Restore original content to each previewed element
+            if (this.originalElementContent) {
+                Object.keys(this.originalElementContent).forEach(elementIndex => {
+                    const index = parseInt(elementIndex);
+                    const originalContent = this.originalElementContent[index];
+                    
+                    // Find the corresponding selected element
+                    const selectedElement = this.currentPreview?.elementsToEdit[index];
+                    if (selectedElement && selectedElement.element) {
+                        const domElement = selectedElement.element;
+                        
+                        // Restore original content
+                        domElement.innerHTML = originalContent.innerHTML;
+                        
+                        // Remove preview indicator
+                        domElement.classList.remove('admin-preview-active');
+                        
+                        console.log(`✅ Restored element ${index}:`, domElement.tagName);
+                    }
+                });
+            }
+            
+            this.showStatus('✅ Original content restored - no changes saved', 'success');
+            
+        } catch (error) {
+            console.error('❌ Error restoring selective preview:', error);
+            this.showStatus('❌ Error restoring original content', 'error');
+        }
+        
+        // Clear preview data
+        this.currentPreview = null;
+        this.originalElementContent = null;
+        
+        // Reset AI edit section
+        this.resetAIEditSection();
+        
+        // Clear selections and hide editing interface
+        this.selectedElements = [];
+        this.renderSelected();
+        this.aiEditSection.style.display = 'none';
+        this.editingIndex = -1;
+        
+        console.log('🗑️ Selective AI preview discarded successfully');
+    }
+    
+    removePreviewIndicators() {
+        // Remove preview indicators from all elements that have them
+        const previewElements = document.querySelectorAll('.admin-preview-active');
+        previewElements.forEach(element => {
+            element.classList.remove('admin-preview-active');
+        });
+        console.log(`🔧 Removed preview indicators from ${previewElements.length} elements`);
+    }
+    
+    resetAIEditSection() {
+        // Reset the AI edit section to original state
+        this.aiEditSection.innerHTML = `
+            <div class="batch-edit-options">
+                <label class="batch-checkbox">
+                    <input type="checkbox" id="batch-edit-mode" />
+                    <span class="checkmark"></span>
+                    Apply the same edit instruction to all selected elements
+                </label>
+            </div>
+            <textarea 
+                id="prompt-input" 
+                class="edit-input"
+                placeholder="Describe the changes you want AI to make..."
+                rows="3"
+            ></textarea>
+            <button class="edit-submit-btn" id="submit-prompt">
+                ✨ Apply AI Changes
+            </button>
+        `;
+        
+        // Re-attach event listeners
+        this.batchEditCheckbox = document.getElementById('batch-edit-mode');
+        this.promptInput = document.getElementById('prompt-input');
+        this.submitPromptBtn = document.getElementById('submit-prompt');
+        this.submitPromptBtn.addEventListener('click', () => this.submitPrompt());
+        
+        // Clear prompt input
+        if (this.promptInput) {
+            this.promptInput.value = '';
         }
     }
     
@@ -1202,6 +1427,103 @@ class AdminToolbar {
             
             .batch-checkbox:hover {
                 color: #475569;
+            }
+            
+            /* AI Preview Styles */
+            .ai-preview-content {
+                text-align: center;
+            }
+            
+            .ai-preview-content h4 {
+                margin: 0 0 8px 0;
+                color: #16a34a;
+                font-size: 15px;
+            }
+            
+            .preview-summary {
+                margin: 0 0 16px 0;
+                color: #64748b;
+                font-size: 12px;
+                line-height: 1.4;
+            }
+            
+            .preview-actions {
+                display: flex;
+                gap: 8px;
+            }
+            
+            .preview-btn {
+                flex: 1;
+                padding: 12px 16px;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 12px;
+                font-weight: 600;
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+            }
+            
+            .save-ai-btn {
+                background: #16a34a;
+                color: white;
+            }
+            
+            .save-ai-btn:hover {
+                background: #15803d;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
+            }
+            
+            .discard-ai-btn {
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+                color: #64748b;
+            }
+            
+            .discard-ai-btn:hover {
+                background: #f1f5f9;
+                color: #ef4444;
+                border-color: #fecaca;
+            }
+            
+            /* Preview indicator for elements in selective preview mode */
+            .admin-preview-active {
+                outline: 2px solid #16a34a !important;
+                outline-offset: 2px !important;
+                background-color: rgba(22, 163, 74, 0.1) !important;
+                position: relative !important;
+            }
+            
+            .admin-preview-active::before {
+                content: "🔍 Preview";
+                position: absolute;
+                top: -25px;
+                left: 0;
+                background: #16a34a;
+                color: white;
+                padding: 2px 8px;
+                border-radius: 4px;
+                font-size: 11px;
+                font-weight: 600;
+                z-index: 99999;
+                pointer-events: none;
+            }
+            
+            /* Preview elements count styling */
+            .preview-elements-count {
+                background: #f0f9ff;
+                border: 1px solid #bae6fd;
+                border-radius: 6px;
+                padding: 6px 10px;
+                margin: 8px 0;
+                font-size: 11px;
+                color: #0c4a6e;
+                font-weight: 600;
+                text-align: center;
             }
             
             /* Responsive adjustments */

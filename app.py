@@ -5,7 +5,7 @@ import subprocess
 import json
 from pathlib import Path
 from datetime import datetime
-from flask import Flask, send_from_directory, request, jsonify
+from flask import Flask, send_from_directory, request, jsonify, redirect
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -1105,12 +1105,35 @@ def serve_any(filename: str):
     try:
         admin = is_admin_route(request.path) or is_admin_route(request.url)
         actual_filename = filename
+        
+        # Handle admin routes
         if "/admin/" in filename:
             actual_filename = filename.replace("/admin/", "/")
             admin = True
         elif filename.endswith("/admin"):
-            actual_filename = filename[:-len("/admin")] + "/"
+            actual_filename = filename[:-len("/admin")]
             admin = True
+        
+        # Handle case like "/jbswebpage/index.html/admin" 
+        # This should redirect to "/jbswebpage/admin"
+        if ".html/admin" in filename:
+            # Extract project path before .html
+            project_part = filename.split(".html/admin")[0]
+            if "/" in project_part:
+                project_name = project_part.split("/")[0]
+                return redirect(f"/{project_name}/admin", 302)
+            else:
+                return redirect(f"/{project_part}/admin", 302)
+        
+        # Handle case like "/jbswebpage/index.html/about.html"
+        # This should redirect to "/jbswebpage/about.html"
+        if ".html/" in filename and not filename.endswith("/admin"):
+            # Extract the part after .html/
+            parts = filename.split(".html/", 1)
+            if len(parts) == 2:
+                project_part = parts[0].split("/")[0] if "/" in parts[0] else parts[0]
+                target_file = parts[1]
+                return redirect(f"/{project_part}/{target_file}", 302)
 
         file_path = safe_join_projects(actual_filename)
 

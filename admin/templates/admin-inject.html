@@ -336,8 +336,8 @@ function showAuthModal() {
 const ADMIN_SESSION_KEY = 'admin_authenticated';
 window.isAuthenticated = localStorage.getItem(ADMIN_SESSION_KEY) === 'true';
 
-// Check if we're in admin mode based on URL
-const isAdminMode = window.location.pathname.includes('/admin') || window.location.search.includes('admin=true');
+// Check if we're in admin mode based on URL OR authentication state
+const isAdminMode = window.location.pathname.includes('/admin') || window.location.search.includes('admin=true') || window.isAuthenticated;
 
 // Function to set authentication state
 function setAuthenticationState(authenticated) {
@@ -355,6 +355,9 @@ function hideAdminUI() {
     const editBtn = document.getElementById('admin-toolbar-button');
     const versionDropdown = document.getElementById('version-history-dropdown');
     const toolbar = document.getElementById('admin-toolbar');
+    const adminTopDiv = document.getElementById('admin-top-div');
+    const saveChangesBtn = document.getElementById('admin-save-changes-button');
+    const undoBtn = document.getElementById('admin-undo-button');
     
     if (logoutBtn) {
         logoutBtn.style.display = 'none';
@@ -368,6 +371,15 @@ function hideAdminUI() {
     if (toolbar) {
         toolbar.style.display = 'none';
     }
+    if (adminTopDiv) {
+        adminTopDiv.style.display = 'none';
+    }
+    if (saveChangesBtn) {
+        saveChangesBtn.style.display = 'none';
+    }
+    if (undoBtn) {
+        undoBtn.style.display = 'none';
+    }
 }
 
 // Function to logout and redirect
@@ -378,7 +390,11 @@ function logoutAdmin() {
     // Redirect to the same page without /admin
     const currentPath = window.location.pathname;
     if (currentPath.includes('/admin')) {
-        const newPath = currentPath.replace('/admin', '');
+        let newPath = currentPath.replace('/admin', '');
+        // Ensure path ends with / for proper relative path resolution
+        if (newPath && !newPath.endsWith('/')) {
+            newPath += '/';
+        }
         window.location.href = newPath || '/';
     } else if (window.location.search.includes('admin=true')) {
         const url = new URL(window.location);

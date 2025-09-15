@@ -1114,16 +1114,13 @@ def serve_any(filename: str):
             actual_filename = filename[:-len("/admin")]
             admin = True
         
-        # Handle case like "/jbswebpage/index.html/admin" 
-        # This should redirect to "/jbswebpage/admin"
+        # Handle case like "/jbswebpage/services.html/admin" 
+        # This should serve the specific HTML file with admin interface
         if ".html/admin" in filename:
-            # Extract project path before .html
-            project_part = filename.split(".html/admin")[0]
-            if "/" in project_part:
-                project_name = project_part.split("/")[0]
-                return redirect(f"/{project_name}/admin", 302)
-            else:
-                return redirect(f"/{project_part}/admin", 302)
+            # Extract the full path including the HTML file
+            html_file_path = filename.split("/admin")[0]
+            actual_filename = html_file_path
+            admin = True
         
         # Handle case like "/jbswebpage/index.html/about.html"
         # This should redirect to "/jbswebpage/about.html"
@@ -1138,19 +1135,19 @@ def serve_any(filename: str):
         file_path = safe_join_projects(actual_filename)
 
         if file_path.exists() and file_path.is_file():
-            if file_path.suffix.lower() == ".html" and admin:
+            if file_path.suffix.lower() == ".html":
                 html = file_path.read_text(encoding="utf-8")
-                return inject_admin_toolbar(html, admin), 200, {"Content-Type": "text/html; charset=utf-8"}
+                # Always inject admin template for HTML files - client-side will determine visibility
+                return inject_admin_toolbar(html, True), 200, {"Content-Type": "text/html; charset=utf-8"}
             mime, _ = mimetypes.guess_type(str(file_path))
             return send_from_directory(str(file_path.parent), file_path.name, mimetype=mime or "application/octet-stream")
 
         if file_path.exists() and file_path.is_dir():
             index_file = file_path / "index.html"
             if index_file.exists():
-                if admin:
-                    html = index_file.read_text(encoding="utf-8")
-                    return inject_admin_toolbar(html, admin), 200, {"Content-Type": "text/html; charset=utf-8"}
-                return send_from_directory(str(file_path), "index.html", mimetype="text/html; charset=utf-8")
+                html = index_file.read_text(encoding="utf-8")
+                # Always inject admin template for HTML files - client-side will determine visibility
+                return inject_admin_toolbar(html, True), 200, {"Content-Type": "text/html; charset=utf-8"}
 
             entries = []
             for p in sorted(file_path.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())):

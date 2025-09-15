@@ -305,6 +305,9 @@ class AdminToolbar {
         // Add visual selection indicator
         this.addSelectionBorder(element);
         
+        // Position toolbar below the selected element
+        this.positionToolbarBelowElement(element);
+        
         // Auto-open editing interface for the newly selected element
         this.editElement(this.selectedElements.length - 1);
         
@@ -327,6 +330,64 @@ class AdminToolbar {
         element.style.removeProperty('outline-offset');
         element.classList.remove('admin-selected-element');
         console.log('🗑️ Removed selection border from element:', element.tagName);
+    }
+    
+    positionToolbarBelowElement(element) {
+        // Store reference to the element we're following
+        this.followingElement = element;
+        
+        // Update position immediately
+        this.updateToolbarPosition();
+        
+        // Add scroll listener to keep toolbar with element
+        this.scrollListener = () => this.updateToolbarPosition();
+        window.addEventListener('scroll', this.scrollListener);
+        window.addEventListener('resize', this.scrollListener);
+        
+        console.log('🎯 Toolbar now following selected element');
+    }
+    
+    updateToolbarPosition() {
+        if (!this.followingElement) return;
+        
+        const rect = this.followingElement.getBoundingClientRect();
+        const padding = 10;
+        
+        // Calculate position relative to the document
+        const left = rect.left + window.scrollX;
+        const top = rect.bottom + window.scrollY + padding;
+        
+        // Apply the position using absolute positioning
+        this.container.style.position = 'absolute';
+        this.container.style.left = left + 'px';
+        this.container.style.top = top + 'px';
+        this.container.style.right = 'auto';
+        this.container.style.bottom = 'auto';
+        
+        // Ensure high z-index to stay on top
+        this.container.style.zIndex = '99999';
+    }
+    
+    resetToolbarPosition() {
+        // Remove scroll listeners
+        if (this.scrollListener) {
+            window.removeEventListener('scroll', this.scrollListener);
+            window.removeEventListener('resize', this.scrollListener);
+            this.scrollListener = null;
+        }
+        
+        // Clear following element reference
+        this.followingElement = null;
+        
+        // Reset to default bottom-right position
+        this.container.style.position = 'fixed';
+        this.container.style.left = 'auto';
+        this.container.style.top = 'auto';
+        this.container.style.right = '20px';
+        this.container.style.bottom = '110px';
+        this.container.style.zIndex = '99999';
+        
+        console.log('🔄 Reset toolbar to default position');
     }
     
     makeElementEditable(element) {
@@ -425,6 +486,9 @@ class AdminToolbar {
         this.selectedElements = [];
         this.renderSelected();
         this.editingIndex = -1;
+        
+        // Reset toolbar position when selections are cleared
+        this.resetToolbarPosition();
         
         // Hide editing sections
         this.textEditingSection.style.display = 'none';
@@ -540,6 +604,8 @@ class AdminToolbar {
             return;
         }
         
+        // Show loading state on buttons and elements
+        this.setAIProcessingState(true);
         this.setState('loading');
         
         if (isBatchMode && this.selectedElements.length > 1) {
@@ -551,23 +617,36 @@ class AdminToolbar {
         try {
             const elementsToEdit = isBatchMode ? this.selectedElements : [this.selectedElements[this.editingIndex] || this.selectedElements[0]];
             const fullPrompt = this.generateBatchPrompt(prompt, elementsToEdit, isBatchMode);
+            
+            // Show "AI is processing..." on selected elements
+            this.showAIProcessingOnElements(elementsToEdit);
+            
             const result = await this.sendToBackend(fullPrompt, elementsToEdit);
             
             if (result.success && result.is_selective_preview) {
                 this.setState('success');
                 this.showStatus('AI preview generated! Review changes on the page.', 'success');
                 
-                // Show selective preview interface
+                // Hide processing indicators and show selective preview interface
+                this.hideAIProcessingOnElements(elementsToEdit);
                 this.showSelectivePreview(result, elementsToEdit);
                 
             } else {
                 this.setState('error');
                 this.showStatus(result.error || 'Failed to generate AI preview', 'error');
+                this.hideAIProcessingOnElements(elementsToEdit);
             }
         } catch (error) {
             console.error('Error submitting prompt:', error);
             this.setState('error');
             this.showStatus('Error processing AI request', 'error');
+            
+            // Hide processing indicators on error
+            const elementsToEdit = isBatchMode ? this.selectedElements : [this.selectedElements[this.editingIndex] || this.selectedElements[0]];
+            this.hideAIProcessingOnElements(elementsToEdit);
+        } finally {
+            // Always restore button states
+            this.setAIProcessingState(false);
         }
     }
     
@@ -706,6 +785,9 @@ class AdminToolbar {
                 this.aiEditSection.style.display = 'none';
                 this.editingIndex = -1;
                 
+                // Reset toolbar position since selections are cleared
+                this.resetToolbarPosition();
+                
                 
                 // Update status
                 this.showStatus('✅ AI changes saved! Use "Save Changes" button to commit to git.', 'success');
@@ -722,33 +804,21 @@ class AdminToolbar {
         console.log('🗑️ Discarding selective AI preview...');
         
         try {
-            // Restore original content to each previewed element
-            if (this.originalElementContent) {
-                Object.keys(this.originalElementContent).forEach(elementIndex => {
-                    const index = parseInt(elementIndex);
-                    const originalContent = this.originalElementContent[index];
-                    
-                    // Find the corresponding selected element
-                    const selectedElement = this.currentPreview?.elementsToEdit[index];
-                    if (selectedElement && selectedElement.element) {
-                        const domElement = selectedElement.element;
-                        
-                        // Restore original content
-                        domElement.innerHTML = originalContent.innerHTML;
-                        
-                        // Remove preview indicator
-                        domElement.classList.remove('admin-preview-active');
-                        
-                        console.log(`✅ Restored element ${index}:`, domElement.tagName);
+            // Remove all selected elements from the DOM
+            if (this.currentPreview?.elementsToEdit) {
+                this.currentPreview.elementsToEdit.forEach((elementInfo, index) => {
+                    if (elementInfo.element) {
+                        elementInfo.element.remove();
+                        console.log(`🗑️ Removed element ${index}:`, elementInfo.tag);
                     }
                 });
             }
             
-            this.showStatus('✅ Original content restored - no changes saved', 'success');
+            this.showStatus('🗑️ Elements removed successfully', 'success');
             
         } catch (error) {
-            console.error('❌ Error restoring selective preview:', error);
-            this.showStatus('❌ Error restoring original content', 'error');
+            console.error('❌ Error removing elements:', error);
+            this.showStatus('❌ Error removing elements', 'error');
         }
         
         // Clear preview data
@@ -764,8 +834,11 @@ class AdminToolbar {
         this.aiEditSection.style.display = 'none';
         this.editingIndex = -1;
         
+        // Reset toolbar position since selections are cleared
+        this.resetToolbarPosition();
         
-        console.log('🗑️ Selective AI preview discarded successfully');
+        
+        console.log('🗑️ Elements discarded and removed from DOM');
     }
     
     removePreviewIndicators() {
@@ -906,6 +979,59 @@ class AdminToolbar {
         this.clearAllSelections();
         
         this.showStatus('Edit cancelled - original structure restored', 'info');
+    }
+    
+    setAIProcessingState(isProcessing) {
+        if (this.submitPromptBtn) {
+            if (isProcessing) {
+                this.submitPromptBtn.disabled = true;
+                this.submitPromptBtn.innerHTML = `
+                    <div class="spinner"></div>
+                    Apply AI Changes
+                `;
+                this.submitPromptBtn.style.cursor = 'not-allowed';
+            } else {
+                this.submitPromptBtn.disabled = false;
+                this.submitPromptBtn.innerHTML = '✨ Apply AI Changes';
+                this.submitPromptBtn.style.cursor = 'pointer';
+            }
+        }
+        
+        if (this.cancelAiBtn) {
+            this.cancelAiBtn.disabled = isProcessing;
+            this.cancelAiBtn.style.opacity = isProcessing ? '0.5' : '1';
+            this.cancelAiBtn.style.cursor = isProcessing ? 'not-allowed' : 'pointer';
+        }
+        
+        console.log(`🔄 AI processing state: ${isProcessing ? 'enabled' : 'disabled'}`);
+    }
+    
+    showAIProcessingOnElements(elementsToEdit) {
+        elementsToEdit.forEach(elementInfo => {
+            if (elementInfo.element) {
+                // Store current content for restoration
+                elementInfo.processingBackupHTML = elementInfo.element.innerHTML;
+                
+                // Replace element content with processing message
+                elementInfo.element.innerHTML = 'AI is processing...';
+                elementInfo.element.classList.add('ai-processing-element');
+                
+                console.log('🤖 Replaced element content with processing message');
+            }
+        });
+    }
+    
+    hideAIProcessingOnElements(elementsToEdit) {
+        elementsToEdit.forEach(elementInfo => {
+            if (elementInfo.processingBackupHTML !== undefined) {
+                // Restore original content
+                elementInfo.element.innerHTML = elementInfo.processingBackupHTML;
+                elementInfo.element.classList.remove('ai-processing-element');
+                delete elementInfo.processingBackupHTML;
+                
+                console.log('🔄 Restored original element content');
+            }
+        });
     }
     
     cancelAiEdit() {
@@ -1264,10 +1390,17 @@ class AdminToolbar {
                 gap: 8px;
             }
             
-            .edit-submit-btn:hover {
+            .edit-submit-btn:hover:not(:disabled) {
                 background: #1e293b;
                 transform: translateY(-1px);
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            }
+            
+            .edit-submit-btn:disabled {
+                background: #64748b !important;
+                cursor: not-allowed !important;
+                transform: none !important;
+                box-shadow: none !important;
             }
             
             .toolbar-actions {
@@ -1453,6 +1586,54 @@ class AdminToolbar {
                 background: #f1f5f9;
                 color: #ef4444;
                 border-color: #fecaca;
+            }
+            
+            /* Spinner for loading states */
+            .spinner {
+                display: inline-block;
+                width: 14px;
+                height: 14px;
+                border: 2px solid #ffffff40;
+                border-top: 2px solid #ffffff;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+                margin-right: 8px;
+            }
+            
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            
+            /* AI Processing Overlay */
+            .ai-processing-overlay {
+                background: #1e293b;
+                color: white;
+                padding: 6px 12px;
+                border-radius: 6px;
+                font-size: 12px;
+                font-weight: 600;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                pointer-events: none;
+                z-index: 99999;
+                animation: pulse 2s infinite;
+            }
+            
+            @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.7; }
+            }
+            
+            /* AI Processing Element */
+            .ai-processing-element {
+                background: #f3f4f6 !important;
+                color: #6b7280 !important;
+                font-style: italic !important;
+                text-align: center !important;
+                padding: 20px !important;
+                border: 2px dashed #d1d5db !important;
+                border-radius: 8px !important;
+                animation: pulse 2s infinite;
             }
             
             /* Preview indicator for elements in selective preview mode */

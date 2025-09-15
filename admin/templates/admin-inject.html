@@ -434,16 +434,15 @@ const loadAdminToolbar = () => {
                 `;
                 logoutButton.style.cssText = `
                     position: fixed;
-                    bottom: 40px;
-                    right: 110px;
+                    bottom: 22px;
+                    right: 117px;
                     z-index: 99999;
                     align-items: center;
                     background: red;
                     color: white;
-                    padding: 14px 24px;
+                    padding: 10px 24px;
                     border-radius: 12px;
                     font-weight: 600;
-                    border: 0.5px solid #e2e8f0;
                     box-shadow: 
                         0 8px 24px rgba(0, 0, 0, 0.08),
                         0 2px 8px rgba(0, 0, 0, 0.04);
@@ -463,16 +462,15 @@ const loadAdminToolbar = () => {
                 `;
                 saveChangesButton.style.cssText = `
                     position: fixed;
-                    bottom: 40px;
+                    bottom: 22px;
                     right: 230px;
                     z-index: 99999;
                     align-items: center;
                     background: #059669;
                     color: white;
-                    padding: 14px 24px;
+                    padding: 9px 18px;
                     border-radius: 12px;
                     font-weight: 600;
-                    border: 0.5px solid #e2e8f0;
                     box-shadow: 
                         0 8px 24px rgba(0, 0, 0, 0.08),
                         0 2px 8px rgba(0, 0, 0, 0.04);
@@ -490,20 +488,19 @@ const loadAdminToolbar = () => {
                 const undoButton = document.createElement('div');
                 undoButton.id = 'admin-undo-button';
                 undoButton.innerHTML = `
-                    <span>↶ Undo</span>
+                    <span>Undo</span>
                 `;
                 undoButton.style.cssText = `
                     position: fixed;
-                    bottom: 40px;
-                    right: 370px;
+                    bottom: 22px;
+                    right: 390px;
                     z-index: 99999;
                     align-items: center;
                     background: #ef4444;
                     color: white;
-                    padding: 14px 24px;
+                    padding: 9px 18px;
                     border-radius: 12px;
                     font-weight: 600;
-                    border: 0.5px solid #e2e8f0;
                     box-shadow: 
                         0 8px 24px rgba(0, 0, 0, 0.08),
                         0 2px 8px rgba(0, 0, 0, 0.04);
@@ -525,13 +522,13 @@ const loadAdminToolbar = () => {
                 `;
                 adminButton.style.cssText = `
                     position: fixed;
-                    bottom: 40px;
-                    right: 20px;
+                    bottom: 21px;
+                    right: 29px;
                     z-index: 99999;
                     align-items: center;
-                    background: #000000;
-                    color: #ffffff;
-                    padding: 14px 24px;
+                    background: white;
+                    color: black;
+                    padding: 10px 24px;
                     border-radius: 12px;
                     font-weight: 600;
                     border: 1px solid #1a1a1a;
@@ -570,8 +567,8 @@ const loadAdminToolbar = () => {
                 `;
                 versionDropdown.style.cssText = `
                     position: fixed;
-                    bottom: 40px;
-                    left: 20px;
+                    bottom: 18px;
+                    left: 25px;
                     z-index: 99999;
                     background: #000000;
                     padding: 5px 5px;
@@ -587,18 +584,19 @@ const loadAdminToolbar = () => {
                 rollbackButton.innerHTML = '↺ Rollback';
                 rollbackButton.disabled = true;
                 rollbackButton.style.cssText = `
-                    background: #ffffff;
-                    color: #ef4444;
-                    border: 1px solid #e2e8f0;
+                    background: #f1f5f9;
+                    color: #94a3b8;
+                    border: 1px solid #cbd5e1;
                     border-radius: 8px;
                     padding: 10px 16px;
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
                     font-size: 13px;
                     font-weight: 600;
-                    cursor: pointer;
+                    cursor: not-allowed;
                     transition: all 0.2s ease;
-                    opacity: 0.6;
-                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+                    opacity: 0.7;
+                    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+                    filter: grayscale(100%);
                 `;
                 
                 versionDropdown.appendChild(rollbackButton);
@@ -608,7 +606,7 @@ const loadAdminToolbar = () => {
                 logoutButton.addEventListener('mouseenter', () => {
                     logoutButton.style.background = '#000000';
                     logoutButton.style.color = '#ffffff';
-                    logoutButton.style.borderColor = '#1a1a1a';
+                    logoutButton.style.borderColor = '#ffffff';
                     logoutButton.style.transform = 'translateY(-2px)';
                     logoutButton.style.boxShadow = '0 12px 32px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.15)';
                 });

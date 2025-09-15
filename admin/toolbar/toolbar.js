@@ -16,10 +16,25 @@ class AdminToolbar {
     
     init() {
         this.createToolbar();
+        this.createTopDiv();
         this.attachEvents();
         this.hide(); // Hide toolbar by default
         console.log('🔧 Simple Admin Toolbar ready');
     }
+    
+    createTopDiv() {
+        // Remove existing top div
+        const existingDiv = document.getElementById('admin-top-div');
+        if (existingDiv) existingDiv.remove();
+        
+        // Create top div
+        this.topDiv = document.createElement('div');
+        this.topDiv.id = 'admin-top-div';
+        this.topDiv.className = 'admin-top-div';
+        document.body.appendChild(this.topDiv);
+        console.log('✅ Top div created');
+    }
+    
     
     createToolbar() {
         // Remove existing
@@ -566,8 +581,13 @@ class AdminToolbar {
             const result = await response.json();
             
             if (result.success) {
+                // Update the DOM element's text content to show the saved changes
+                element.element.textContent = newText;
+                
+                // Update the stored element info
                 element.text = newText;
                 element.originalText = newText;
+                element.originalHTML = element.element.innerHTML; // Update stored HTML to reflect changes
                 
                 this.renderSelected();
                 this.cancelTextEdit();
@@ -1665,11 +1685,76 @@ class AdminToolbar {
                 outline-offset: 2px !important;
             }
             
+            /* Edit Button */
+            #admin-toolbar-button {
+                position: fixed;
+                bottom: 21px;
+                right: 29px;
+                z-index: 99999;
+                align-items: center;
+                background: white !important;
+                color: black !important;
+                padding: 10px 24px;
+                border-radius: 12px;
+                font-weight: 600;
+                border: 1px solid #1a1a1a;
+                box-shadow: 
+                    0 8px 24px rgba(0, 0, 0, 0.25),
+                    0 2px 8px rgba(0, 0, 0, 0.15);
+                backdrop-filter: blur(8px);
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+                font-size: 14px;
+                cursor: pointer;
+                transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+                display: flex;
+            }
+            
+            #admin-toolbar-button:hover {
+                background: #ffffff !important;
+                color: #000000 !important;
+                transform: translateY(-1px);
+                box-shadow: 
+                    0 12px 32px rgba(0, 0, 0, 0.3),
+                    0 4px 12px rgba(0, 0, 0, 0.2);
+            }
+            
+            /* Top Div */
+            .admin-top-div {
+                position: fixed;
+                bottom: 15px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 96%;
+                z-index: 99999;
+                align-items: center;
+                background: #000000;
+                color: #ffffff;
+                padding: 14px 24px;
+                padding-bottom: 35px;
+                padding-top: 20px;
+                border-radius: 12px;
+                font-weight: 600;
+                border: 1px solid #1a1a1a;
+                box-shadow: 
+                    0 8px 24px rgba(0, 0, 0, 0.25),
+                    0 2px 8px rgba(0, 0, 0, 0.15);
+                backdrop-filter: blur(8px);
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+                font-size: 14px;
+                transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+                display: flex;
+                justify-content: center;
+            }
+            
+            
+            
             /* Responsive adjustments */
             @media (max-width: 768px) {
                 .admin-toolbar-popup {
                     width: 320px;
                 }
+                
+                
             }
             
             @media (max-width: 480px) {

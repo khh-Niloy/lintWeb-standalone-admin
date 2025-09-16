@@ -904,8 +904,14 @@ const loadAdminToolbar = () => {
                                 const selectedTag = this.value;
                                 
                                 console.log('🔄 Version changed to:', selectedTag);
+                                console.log('🔍 Rollback button exists:', !!rollbackBtn);
+                                console.log('🔍 Rollback button current state:', {
+                                    disabled: rollbackBtn?.disabled,
+                                    innerHTML: rollbackBtn?.innerHTML,
+                                    style: rollbackBtn?.style.cssText
+                                });
                                 
-                                if (selectedTag) {
+                                if (selectedTag && rollbackBtn) {
                                     console.log('✅ Enabling rollback button');
                                     rollbackBtn.disabled = false;
                                     rollbackBtn.style.opacity = '1';
@@ -913,14 +919,19 @@ const loadAdminToolbar = () => {
                                     rollbackBtn.style.background = '#fef2f2';
                                     rollbackBtn.style.borderColor = '#fecaca';
                                     rollbackBtn.style.color = '#dc2626';
+                                    rollbackBtn.style.filter = 'none';
+                                    console.log('✅ Rollback button enabled successfully');
                                 } else {
-                                    console.log('❌ Disabling rollback button');
-                                    rollbackBtn.disabled = true;
-                                    rollbackBtn.style.opacity = '0.6';
-                                    rollbackBtn.style.cursor = 'not-allowed';
-                                    rollbackBtn.style.background = '#f8fafc';
-                                    rollbackBtn.style.borderColor = '#e2e8f0';
-                                    rollbackBtn.style.color = '#94a3b8';
+                                    console.log('❌ Disabling rollback button, selectedTag:', selectedTag, 'rollbackBtn exists:', !!rollbackBtn);
+                                    if (rollbackBtn) {
+                                        rollbackBtn.disabled = true;
+                                        rollbackBtn.style.opacity = '0.6';
+                                        rollbackBtn.style.cursor = 'not-allowed';
+                                        rollbackBtn.style.background = '#f8fafc';
+                                        rollbackBtn.style.borderColor = '#e2e8f0';
+                                        rollbackBtn.style.color = '#94a3b8';
+                                        rollbackBtn.style.filter = 'grayscale(100%)';
+                                    }
                                 }
                             });
                             console.log('✅ Version change listener added successfully');
@@ -928,27 +939,46 @@ const loadAdminToolbar = () => {
                             // Also setup rollback button click handler here
                             console.log('🔧 Setting up rollback button click handler...');
                             if (rollbackBtn) {
-                                rollbackBtn.addEventListener('click', async function() {
+                                rollbackBtn.addEventListener('click', async function(event) {
                                     console.log('🚀 Rollback button clicked!');
-                                    const selectedTag = document.getElementById('version-select').value;
-                                    console.log('📋 Selected tag:', selectedTag);
+                                    console.log('🔍 Button state at click:', {
+                                        disabled: this.disabled,
+                                        innerHTML: this.innerHTML,
+                                        event: event
+                                    });
                                     
-                                    if (!selectedTag) {
-                                        console.log('❌ No tag selected, returning');
+                                    // Prevent multiple clicks and check if button is disabled
+                                    if (this.disabled) {
+                                        console.log('❌ Button is disabled, ignoring click');
+                                        return;
+                                    }
+                                    
+                                    const versionSelectElement = document.getElementById('version-select');
+                                    const selectedTag = versionSelectElement?.value;
+                                    console.log('📋 Selected tag:', selectedTag);
+                                    console.log('🔍 Version select element found:', !!versionSelectElement);
+                                    
+                                    if (!selectedTag || selectedTag === '') {
+                                        console.log('❌ No tag selected, showing alert');
+                                        alert('Please select a version first');
                                         return;
                                     }
                                     
                                     console.log('💭 Showing confirmation dialog...');
-                                    if (!confirm(`Are you sure you want to rollback to ${selectedTag}? This will reset the current state to that version.`)) {
+                                    if (!confirm(`Are you sure you want to rollback to ${selectedTag}?\n\nThis will:\n- Reset the current state to that version\n- Force push changes to the repository\n- Reload the page\n\nThis action cannot be undone.`)) {
                                         console.log('❌ User cancelled rollback');
                                         return;
                                     }
                                     
                                     console.log('🔄 Starting rollback process...');
+                                    // Disable button and show loading state
                                     this.disabled = true;
                                     this.innerHTML = '↺ Rolling back...';
+                                    this.style.cursor = 'not-allowed';
+                                    this.style.opacity = '0.6';
                                     
                                     try {
+                                        console.log('📡 Sending rollback request...');
                                         const response = await fetch('/api/rollback', {
                                             method: 'POST',
                                             headers: {
@@ -957,22 +987,42 @@ const loadAdminToolbar = () => {
                                             body: JSON.stringify({ tag: selectedTag })
                                         });
                                         
+                                        console.log('📨 Rollback response status:', response.status);
+                                        
+                                        if (!response.ok) {
+                                            throw new Error(`HTTP error! status: ${response.status}`);
+                                        }
+                                        
                                         const data = await response.json();
-
-                                        console.log("✅ Rollback data:", data);
+                                        console.log("✅ Rollback response data:", data);
                                         
                                         if (data.success) {
-                                            alert(`Successfully rolled back to ${selectedTag}! The page will reload.`);
-                                            window.location.reload();
+                                            console.log('🎉 Rollback successful!');
+                                            alert(`✅ Successfully rolled back to ${selectedTag}!\n\nThe page will now reload to show the changes.`);
+                                            // Clear any stored admin state since we've rolled back
+                                            localStorage.removeItem('admin_edit_count');
+                                            // Force a hard refresh to bypass cache and show rollback changes
+                                            setTimeout(() => {
+                                                // Multiple methods to ensure fresh content loads
+                                                // Method 1: Add cache-busting parameter
+                                                const url = new URL(window.location);
+                                                url.searchParams.set('_t', Date.now());
+                                                window.location.href = url.toString();
+                                            }, 500);
                                         } else {
-                                            alert(`Rollback failed: ${data.error}`);
+                                            console.error('❌ Rollback failed:', data.error);
+                                            alert(`❌ Rollback failed: ${data.error || data.message || 'Unknown error'}`);
                                         }
                                     } catch (error) {
-                                        console.error('Rollback error:', error);
-                                        alert('Rollback failed: Network error');
+                                        console.error('❌ Rollback network/parse error:', error);
+                                        alert(`❌ Rollback failed: ${error.message || 'Network error'}`);
                                     } finally {
+                                        // Reset button state
                                         this.disabled = false;
                                         this.innerHTML = '↺ Rollback';
+                                        this.style.cursor = 'pointer';
+                                        this.style.opacity = '1';
+                                        console.log('🔄 Button state reset');
                                     }
                                 });
                                 console.log('✅ Rollback button click handler added successfully');
@@ -1018,8 +1068,10 @@ const loadAdminToolbar = () => {
                     undoButton.style.display = 'none';
                 };
 
-                // Edit counter
-                window.editCount = 0;
+                // Edit counter with persistent state
+                const EDIT_COUNT_KEY = 'admin_edit_count';
+                window.editCount = parseInt(localStorage.getItem(EDIT_COUNT_KEY)) || 0;
+                console.log(`📊 Restored edit count from storage: ${window.editCount}`);
 
                 // Function to update save changes button with edit count
                 window.updateSaveChangesButton = function() {
@@ -1064,7 +1116,8 @@ const loadAdminToolbar = () => {
                 window.incrementEditCount = function() {
                     console.log('🚀 incrementEditCount called!');
                     window.editCount++;
-                    console.log(`📝 Edit count incremented to: ${window.editCount}`);
+                    localStorage.setItem(EDIT_COUNT_KEY, window.editCount.toString());
+                    console.log(`📝 Edit count incremented to: ${window.editCount} (saved to storage)`);
                     console.log('🔄 About to call updateSaveChangesButton...');
                     window.updateSaveChangesButton();
                     console.log('✅ updateSaveChangesButton completed');
@@ -1073,7 +1126,8 @@ const loadAdminToolbar = () => {
                 // Function to reset edit count
                 window.resetEditCount = function() {
                     window.editCount = 0;
-                    console.log('🔄 Edit count reset to 0');
+                    localStorage.setItem(EDIT_COUNT_KEY, '0');
+                    console.log('🔄 Edit count reset to 0 (saved to storage)');
                     window.updateSaveChangesButton();
                 };
 
@@ -1090,13 +1144,23 @@ const loadAdminToolbar = () => {
                 // Show admin button and version controls if authenticated
                 if (window.isAuthenticated) {
                     window.showAdminUI();
+                    // Initialize save/undo buttons based on stored edit count
+                    console.log('🔄 Initializing save/undo buttons on page load...');
+                    window.updateSaveChangesButton();
                 }
+                
+                // Initialize buttons based on stored state after toolbar loads
+                setTimeout(() => {
+                    console.log('🔄 Final initialization of save/undo buttons...');
+                    window.updateSaveChangesButton();
+                }, 100);
                 
                 // Show welcome message
                 setTimeout(() => {
                     if (window.adminToolbar && typeof window.adminToolbar.showStatus === 'function') {
                         console.log('📢 Showing welcome message...');
-                        window.adminToolbar.showStatus('Admin mode activated! Click "Edit" to start editing', 'success');
+                        const editCountMsg = window.editCount > 0 ? ` (${window.editCount} unsaved changes)` : '';
+                        window.adminToolbar.showStatus(`Admin mode activated${editCountMsg}! Click "Edit" to start editing`, 'success');
                     } else {
                         console.log('ℹ️ Skipping welcome message - showStatus not available');
                     }

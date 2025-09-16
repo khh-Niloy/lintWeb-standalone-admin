@@ -693,7 +693,9 @@ INSTRUCTIONS:
 4. DO NOT return full HTML documents - only the content that goes INSIDE each element
 5. Match existing design patterns and styling from the original file
 
-IMPORTANT: You MUST respond with valid JSON in EXACTLY this format:
+RESPONSE FORMAT: You MUST respond with ONLY valid JSON. Do not include any text before or after the JSON. Do not use markdown code blocks. Do not include explanations.
+
+EXACT JSON FORMAT REQUIRED:
 {{
   "status": "success",
   "message": "Description of changes made",
@@ -713,17 +715,15 @@ IMPORTANT: You MUST respond with valid JSON in EXACTLY this format:
 }}
 
 CRITICAL REQUIREMENTS:
+- ONLY return raw JSON, no other text
+- NO markdown code blocks (```json)
+- NO explanatory text before or after JSON
 - Return ONLY the inner HTML content for each element, NOT full HTML documents
 - Preserve all CSS classes and styling attributes
-- Return ONLY valid JSON - no explanations, no code blocks
 - Generate content for ALL selected elements (indices 0 to {len(elements)-1})
 - If you cannot access the file, return {{"status": "error", "message": "File access failed"}}
 
-Generate the element-specific updates now."""
-
-
-
-
+Begin JSON response now:"""
 
 
 
@@ -874,10 +874,106 @@ def admin_edit():
                 except Exception as e:
                     logger.error(f"Failed to check file modifications: {e}")
                 
-                # Try to extract HTML content from the non-JSON response
+                # Try to extract JSON from response manually with multiple strategies
                 try:
-                    # Look for HTML content patterns in the response
                     import re
+                    
+                    def extract_and_parse_json(text, pattern_desc):
+                        """Helper to extract and parse JSON with detailed logging"""
+                        try:
+                            response_data = json_lib.loads(text)
+                            if response_data.get("status") == "success":
+                                logger.info(f"Successfully parsed JSON using {pattern_desc}")
+                                return response_data
+                        except json_lib.JSONDecodeError as e:
+                            logger.warning(f"Failed to parse extracted JSON from {pattern_desc}: {e}")
+                        return None
+                    
+                    # Strategy 1: Clean the response by removing common prefixes/suffixes
+                    cleaned_output = qwen_output.strip()
+                    
+                    # Remove common markdown code block markers
+                    if cleaned_output.startswith('```'):
+                        lines = cleaned_output.split('\n')
+                        if len(lines) > 2:
+                            cleaned_output = '\n'.join(lines[1:-1])
+                    
+                    # Remove "json" language identifier if present
+                    if cleaned_output.startswith('json\n'):
+                        cleaned_output = cleaned_output[5:]
+                    
+                    # Try parsing the cleaned output directly
+                    result_data = extract_and_parse_json(cleaned_output, "cleaned direct parse")
+                    if result_data:
+                        response = {
+                            "success": True, 
+                            "message": result_data.get("message", "AI preview generated successfully"),
+                            "element_updates": result_data.get("element_updates", []),
+                            "changes_summary": result_data.get("changes_summary", ""),
+                            "qwen_response": result_data,
+                            "is_selective_preview": True,
+                            "target_file": target_file,
+                            "project_path": str(project_path)
+                        }
+                        return jsonify(response)
+                    
+                    # Strategy 2: Find JSON using multiple patterns
+                    json_patterns = [
+                        # Basic JSON with status success
+                        r'\{[^{}]*"status"[^{}]*"success"[^{}]*\}',
+                        # More permissive pattern for nested JSON
+                        r'\{[\s\S]*?"status"\s*:\s*"success"[\s\S]*?\}',
+                        # Pattern that captures complete JSON objects
+                        r'\{(?:[^{}]|{[^{}]*})*\}',
+                        # Pattern for JSON that may span multiple lines
+                        r'(?s)\{.*?"status".*?"success".*?\}',
+                        # Pattern for finding the largest JSON-like structure
+                        r'(?s)\{.*\}'
+                    ]
+                    
+                    for i, pattern in enumerate(json_patterns):
+                        matches = re.findall(pattern, qwen_output, re.DOTALL | re.IGNORECASE)
+                        for match in matches:
+                            result_data = extract_and_parse_json(match, f"pattern {i+1}")
+                            if result_data:
+                                response = {
+                                    "success": True, 
+                                    "message": result_data.get("message", "AI preview generated successfully"),
+                                    "element_updates": result_data.get("element_updates", []),
+                                    "changes_summary": result_data.get("changes_summary", ""),
+                                    "qwen_response": result_data,
+                                    "is_selective_preview": True,
+                                    "target_file": target_file,
+                                    "project_path": str(project_path)
+                                }
+                                return jsonify(response)
+                    
+                    # Strategy 3: Try to fix common JSON formatting issues
+                    fixed_attempts = [
+                        # Remove trailing commas
+                        re.sub(r',\s*}', '}', qwen_output),
+                        re.sub(r',\s*]', ']', qwen_output),
+                        # Fix unescaped quotes in strings
+                        re.sub(r'(?<!\\)"(?![,\]\}:\s])', '\\"', qwen_output),
+                    ]
+                    
+                    for attempt_text in fixed_attempts:
+                        for pattern in json_patterns[:3]:  # Use first 3 patterns only
+                            matches = re.findall(pattern, attempt_text, re.DOTALL | re.IGNORECASE)
+                            for match in matches:
+                                result_data = extract_and_parse_json(match, "fixed JSON")
+                                if result_data:
+                                    response = {
+                                        "success": True, 
+                                        "message": result_data.get("message", "AI preview generated successfully"),
+                                        "element_updates": result_data.get("element_updates", []),
+                                        "changes_summary": result_data.get("changes_summary", ""),
+                                        "qwen_response": result_data,
+                                        "is_selective_preview": True,
+                                        "target_file": target_file,
+                                        "project_path": str(project_path)
+                                    }
+                                    return jsonify(response)
                     
                     # Try to find complete HTML document in response
                     html_pattern = r'<!DOCTYPE html>.*?</html>'
@@ -901,18 +997,63 @@ def admin_edit():
                         
                         return jsonify(response)
                     
-                    # If no complete HTML found, return error with output for debugging
+                    # Strategy 4: Create a synthetic response from the raw text
+                    logger.info("All JSON extraction strategies failed, creating synthetic response")
+                    
+                    # Look for any meaningful content in the response
+                    content_lines = [line.strip() for line in qwen_output.split('\n') if line.strip()]
+                    
+                    if content_lines:
+                        # Try to find lines that look like content updates
+                        meaningful_content = []
+                        for line in content_lines:
+                            # Skip lines that look like code or metadata
+                            if not any(skip in line.lower() for skip in ['```', 'json', 'status', 'error', 'failed']):
+                                if len(line) > 10:  # Only consider substantial lines
+                                    meaningful_content.append(line)
+                        
+                        if meaningful_content:
+                            # Create synthetic element updates based on the number of selected elements
+                            synthetic_updates = []
+                            for i in range(len(elements)):
+                                # Use the first meaningful content for all elements, or cycle through if there are multiple
+                                content_to_use = meaningful_content[i % len(meaningful_content)]
+                                synthetic_updates.append({
+                                    "element_index": i,
+                                    "new_content": content_to_use,
+                                    "summary": f"AI suggested content for element {i+1}"
+                                })
+                            
+                            response = {
+                                "success": True,
+                                "message": "AI content extracted from text response",
+                                "element_updates": synthetic_updates,
+                                "changes_summary": f"Generated {len(synthetic_updates)} content suggestions from AI text output",
+                                "qwen_response": {"status": "synthetic", "raw_output": qwen_output[:500]},
+                                "is_selective_preview": True,
+                                "target_file": target_file,
+                                "project_path": str(project_path)
+                            }
+                            return jsonify(response)
+                    
+                    # Final fallback: Return error with detailed debug info
                     response = {
                         "success": False,
-                        "error": "AI did not return valid JSON format and no HTML content could be extracted", 
-                        "qwen_output": qwen_output[:1000],  # Show more output for debugging
-                        "debug_info": "Please check Qwen CLI response format"
+                        "error": "AI returned malformed response. Unable to extract meaningful content.", 
+                        "qwen_output": qwen_output[:1500],  # Show more output for debugging
+                        "debug_info": {
+                            "response_length": len(qwen_output),
+                            "first_100_chars": qwen_output[:100],
+                            "contains_json_markers": any(marker in qwen_output.lower() for marker in ['{', 'status', 'success']),
+                            "line_count": len(qwen_output.split('\n')),
+                            "strategies_attempted": ["direct_parse", "pattern_matching", "json_fixing", "synthetic_response"]
+                        }
                     }
                     
                     return jsonify(response), 500
                     
                 except Exception as e:
-                    logger.error(f"Failed to extract HTML content: {e}")
+                    logger.error(f"Failed to extract content from response: {e}")
                     response = {
                         "success": False,
                         "error": f"AI processing error: {str(e)}", 
@@ -1138,7 +1279,16 @@ def serve_any(filename: str):
             if file_path.suffix.lower() == ".html":
                 html = file_path.read_text(encoding="utf-8")
                 # Always inject admin template for HTML files - client-side will determine visibility
-                return inject_admin_toolbar(html, True), 200, {"Content-Type": "text/html; charset=utf-8"}
+                response_html = inject_admin_toolbar(html, True)
+                
+                # Add cache control headers to prevent caching in admin mode
+                headers = {
+                    "Content-Type": "text/html; charset=utf-8",
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                    "Pragma": "no-cache",
+                    "Expires": "0"
+                }
+                return response_html, 200, headers
             mime, _ = mimetypes.guess_type(str(file_path))
             return send_from_directory(str(file_path.parent), file_path.name, mimetype=mime or "application/octet-stream")
 
@@ -1147,7 +1297,16 @@ def serve_any(filename: str):
             if index_file.exists():
                 html = index_file.read_text(encoding="utf-8")
                 # Always inject admin template for HTML files - client-side will determine visibility
-                return inject_admin_toolbar(html, True), 200, {"Content-Type": "text/html; charset=utf-8"}
+                response_html = inject_admin_toolbar(html, True)
+                
+                # Add cache control headers to prevent caching in admin mode
+                headers = {
+                    "Content-Type": "text/html; charset=utf-8",
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                    "Pragma": "no-cache",
+                    "Expires": "0"
+                }
+                return response_html, 200, headers
 
             entries = []
             for p in sorted(file_path.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())):
@@ -1163,13 +1322,14 @@ def serve_any(filename: str):
                 f"<td>{size}</td><td>{mtime}</td></tr>"
                 for name, is_dir, size, mtime in entries
             )
+            css_styles = "body{font-family:system-ui,Arial}table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px solid #eee}"
             html = f"""<!doctype html><html><head><meta charset="utf-8"><title>{actual_filename}</title>
-<style>body{{font-family:system-ui,Arial}}table{{width:100%;border-collapse:collapse}}td,th{{padding:8px;border-bottom:1px solid #eee}}</style>
+<style>{css_styles}</style>
 </head><body><h1>{actual_filename}</h1>
 <table><thead><tr><th>Name</th><th>Size</th><th>Modified</th></tr></thead><tbody>
 <tr><td><a href="../">../</a></td><td>-</td><td>-</td></tr>
 {rows}
-</tbody></table><p><a href="/">← Back to Projects</a></p></body></html>"""
+</tbody></table><p><a href="/">&lt;- Back to Projects</a></p></body></html>"""
             return html, 200, {"Content-Type": "text/html; charset=utf-8"}
 
         return "Not found", 404

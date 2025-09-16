@@ -16,10 +16,25 @@ class AdminToolbar {
     
     init() {
         this.createToolbar();
+        this.createTopDiv();
         this.attachEvents();
         this.hide(); // Hide toolbar by default
         console.log('🔧 Simple Admin Toolbar ready');
     }
+    
+    createTopDiv() {
+        // Remove existing top div
+        const existingDiv = document.getElementById('admin-top-div');
+        if (existingDiv) existingDiv.remove();
+        
+        // Create top div
+        this.topDiv = document.createElement('div');
+        this.topDiv.id = 'admin-top-div';
+        this.topDiv.className = 'admin-top-div';
+        document.body.appendChild(this.topDiv);
+        console.log('✅ Top div created');
+    }
+    
     
     createToolbar() {
         // Remove existing
@@ -35,14 +50,6 @@ class AdminToolbar {
                 <!-- Close Button -->
                 <button id="close-btn" class="close-btn">✖</button>
                 
-                <!-- Selected Elements Display -->
-                <div class="selected-elements-section">
-                    <h4>Selected Elements</h4>
-                    <div class="selected-elements-container" id="selected-elements-container">
-                        <div class="no-elements">No elements selected</div>
-                    </div>
-                </div>
-                
                 <!-- Edit Mode Toggle -->
                 <div class="edit-mode-section" id="edit-mode-section" style="display: none;">
                     <div class="edit-mode-toggle">
@@ -57,18 +64,12 @@ class AdminToolbar {
                 
                 <!-- Text Editing Section -->
                 <div class="text-editing-section" id="text-editing-section" style="display: none;">
-                    <textarea 
-                        id="text-edit-input" 
-                        class="text-edit-input"
-                        placeholder="Enter the new text content..."
-                        rows="3"
-                    ></textarea>
                     <div class="text-edit-actions">
                         <button class="text-edit-btn save-btn" id="save-text-btn">
-                            💾 Save
+                            save
                         </button>
-                        <button class="text-edit-btn cancel-text" id="cancel-text-btn">
-                            ❌ Cancel
+                        <button class="text-edit-btn cancel-btn" id="cancel-text-btn">
+                            cancel
                         </button>
                     </div>
                 </div>
@@ -89,15 +90,20 @@ class AdminToolbar {
                         placeholder="Describe the changes you want AI to make..."
                         rows="3"
                     ></textarea>
-                    <button class="edit-submit-btn" id="submit-prompt">
-                        ✨ Apply AI Changes
-                    </button>
+                    <div class="ai-edit-actions">
+                        <button class="edit-submit-btn" id="submit-prompt">
+                            Apply AI Changes
+                        </button>
+                        <button class="text-edit-btn cancel-btn" id="cancel-ai-btn">
+                            cancel
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- Element Selection -->
                 <div class="toolbar-actions">
                     <button class="toolbar-btn select-btn" id="btn-toggle-select">
-                        🎯 Start Editing
+                        Start Selecting
                     </button>
                 </div>
             </div>
@@ -107,10 +113,8 @@ class AdminToolbar {
         document.body.appendChild(this.container);
         
         // Get references
-        this.selectedContainer = document.getElementById('selected-elements-container');
         this.editModeSection = document.getElementById('edit-mode-section');
         this.textEditingSection = document.getElementById('text-editing-section');
-        this.textEditInput = document.getElementById('text-edit-input');
         this.aiEditSection = document.getElementById('ai-edit-section');
         this.promptInput = document.getElementById('prompt-input');
         this.selectBtn = document.getElementById('btn-toggle-select');
@@ -118,11 +122,13 @@ class AdminToolbar {
         this.aiModeBtn = document.getElementById('ai-mode-btn');
         this.saveTextBtn = document.getElementById('save-text-btn');
         this.cancelTextBtn = document.getElementById('cancel-text-btn');
+        this.cancelAiBtn = document.getElementById('cancel-ai-btn');
         this.submitPromptBtn = document.getElementById('submit-prompt');
         this.closeBtn = document.getElementById('close-btn');
 
         this.batchEditCheckbox = document.getElementById('batch-edit-mode');
         this.currentEditMode = 'text'; // Default to text edit mode
+        this.hasUnsavedEdits = false;
     }
     
     
@@ -132,26 +138,15 @@ class AdminToolbar {
         this.aiModeBtn.addEventListener('click', () => this.setEditMode('ai'));
         this.saveTextBtn.addEventListener('click', () => this.saveTextToFile());
         this.cancelTextBtn.addEventListener('click', () => this.cancelTextEdit());
+        this.cancelAiBtn.addEventListener('click', () => this.cancelAiEdit());
         this.submitPromptBtn.addEventListener('click', () => this.submitPrompt());
         this.closeBtn.addEventListener('click', () => this.hide());
-        
-
-        
-        // Auto-update text preview as user types
-        this.textEditInput.addEventListener('input', () => this.updatePreview());
         
         // Keyboard shortcuts
         this.promptInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 this.submitPrompt();
-            }
-        });
-        
-        this.textEditInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && e.ctrlKey) {
-                e.preventDefault();
-                this.saveTextToFile();
             }
         });
         
@@ -168,7 +163,29 @@ class AdminToolbar {
         this.container.style.display = 'block';
         this.container.classList.add('visible');
         this.setState('idle');
-        console.log('✅ Toolbar shown');
+        
+        // If we have selected elements, restore the editing interface
+        if (this.selectedElements.length > 0) {
+            this.renderSelected();
+            
+            // If we were in the middle of editing, restore the text editing mode
+            if (this.editingIndex >= 0) {
+                this.editElement(this.editingIndex);
+            }
+        }
+        
+        // Show save changes button when toolbar opens and ensure it's properly initialized
+        if (window.showSaveChangesButton) {
+            window.showSaveChangesButton();
+        }
+        if (window.showUndoButton) {
+            window.showUndoButton();
+        }
+        if (window.updateSaveChangesButton) {
+            window.updateSaveChangesButton();
+        }
+        
+        console.log('✅ Toolbar shown - restored editing state');
     }
     
     hide() {
@@ -177,7 +194,19 @@ class AdminToolbar {
         this.container.classList.remove('visible');
         this.exitSelectMode();
         this.setState('idle');
-        console.log('🔻 Toolbar hidden');
+        
+        // Don't clear selections when hiding toolbar - keep elements selected
+        // Don't clean up editable elements - preserve editing state
+        
+        // Hide save changes button when toolbar closes
+        if (window.hideSaveChangesButton) {
+            window.hideSaveChangesButton();
+        }
+        if (window.hideUndoButton) {
+            window.hideUndoButton();
+        }
+        
+        console.log('🔻 Toolbar hidden - selections and editing state preserved');
     }
     
     startEditing() {
@@ -200,10 +229,23 @@ class AdminToolbar {
             if (mode === 'text') {
                 this.textEditingSection.style.display = 'block';
                 this.aiEditSection.style.display = 'none';
-                this.textEditInput.focus();
+                
+                // Re-enable text editing mode with cursor
+                const elementInfo = this.selectedElements[this.editingIndex];
+                if (elementInfo && elementInfo.element) {
+                    this.makeElementEditable(elementInfo.element);
+                }
             } else {
                 this.textEditingSection.style.display = 'none';
                 this.aiEditSection.style.display = 'block';
+                
+                // Disable contentEditable when switching to AI mode
+                const elementInfo = this.selectedElements[this.editingIndex];
+                if (elementInfo && elementInfo.element && this.cleanupEditableElement) {
+                    elementInfo.element.contentEditable = false;
+                    elementInfo.element.blur();
+                }
+                
                 this.promptInput.focus();
             }
         }
@@ -221,24 +263,24 @@ class AdminToolbar {
         this.isSelecting = true;
         this.selectBtn.textContent = '⏹ Stop Selecting';
         this.selectBtn.classList.add('active');
-        document.body.style.cursor = 'crosshair';
+        document.body.style.setProperty('cursor', 'crosshair', 'important');
         document.body.classList.add('admin-selecting');
         document.addEventListener('mouseover', this.handleHover.bind(this), true);
         document.addEventListener('click', this.handleSelect.bind(this), true);
         this.showStatus('Click on elements to select them for editing', 'info');
-        console.log('🎯 Selection mode ON');
+        console.log('🎯 Selection mode ON - crosshair cursor should show');
     }
     
     exitSelectMode() {
         this.isSelecting = false;
-        this.selectBtn.textContent = '🎯 Start Editing';
+        this.selectBtn.textContent = 'Start Selecting';
         this.selectBtn.classList.remove('active');
-        document.body.style.cursor = 'default';
+        document.body.style.removeProperty('cursor');
         document.body.classList.remove('admin-selecting');
         document.removeEventListener('mouseover', this.handleHover, true);
         document.removeEventListener('click', this.handleSelect, true);
         this.clearHighlight();
-        console.log('🎯 Selection mode OFF');
+        console.log('🎯 Selection mode OFF - cursor restored');
     }
     
     handleHover(e) {
@@ -268,17 +310,207 @@ class AdminToolbar {
             classes: Array.from(element.classList).join(' '),
             text: element.textContent?.trim() || '',
             originalText: element.textContent?.trim() || '',
+            originalHTML: element.innerHTML, // Store original HTML structure
             attributes: this.getElementAttributes(element)
         };
         
         this.selectedElements.push(elementInfo);
         this.renderSelected();
         
+        // Add visual selection indicator
+        this.addSelectionBorder(element);
+        
+        // Position toolbar below the selected element
+        this.positionToolbarBelowElement(element);
+        
         // Auto-open editing interface for the newly selected element
         this.editElement(this.selectedElements.length - 1);
         
         this.showStatus('Element selected - use toggle to switch edit modes', 'success');
         console.log('✅ Element selected:', elementInfo);
+    }
+    
+    
+    addSelectionBorder(element) {
+        // Add blue dashed border to selected element
+        element.style.setProperty('outline', '2px dashed #3b82f6', 'important');
+        element.style.setProperty('outline-offset', '2px', 'important');
+        element.classList.add('admin-selected-element');
+        console.log('✅ Added selection border to element:', element.tagName);
+    }
+    
+    removeSelectionBorder(element) {
+        // Remove selection border
+        element.style.removeProperty('outline');
+        element.style.removeProperty('outline-offset');
+        element.classList.remove('admin-selected-element');
+        console.log('🗑️ Removed selection border from element:', element.tagName);
+    }
+    
+    positionToolbarBelowElement(element) {
+        // Store reference to the element we're following
+        this.followingElement = element;
+        
+        // Update position immediately
+        this.updateToolbarPosition();
+        
+        // Add scroll listener to keep toolbar with element
+        this.scrollListener = () => this.updateToolbarPosition();
+        window.addEventListener('scroll', this.scrollListener);
+        window.addEventListener('resize', this.scrollListener);
+        
+        console.log('🎯 Toolbar now following selected element');
+    }
+    
+    updateToolbarPosition() {
+        if (!this.followingElement) return;
+        
+        const rect = this.followingElement.getBoundingClientRect();
+        const padding = 10;
+        
+        // Calculate position relative to the document
+        const left = rect.left + window.scrollX;
+        const top = rect.bottom + window.scrollY + padding;
+        
+        // Apply the position using absolute positioning
+        this.container.style.position = 'absolute';
+        this.container.style.left = left + 'px';
+        this.container.style.top = top + 'px';
+        this.container.style.right = 'auto';
+        this.container.style.bottom = 'auto';
+        
+        // Ensure high z-index to stay on top
+        this.container.style.zIndex = '99999';
+    }
+    
+    resetToolbarPosition() {
+        // Remove scroll listeners
+        if (this.scrollListener) {
+            window.removeEventListener('scroll', this.scrollListener);
+            window.removeEventListener('resize', this.scrollListener);
+            this.scrollListener = null;
+        }
+        
+        // Clear following element reference
+        this.followingElement = null;
+        
+        // Reset to default bottom-right position
+        this.container.style.position = 'fixed';
+        this.container.style.left = 'auto';
+        this.container.style.top = 'auto';
+        this.container.style.right = '20px';
+        this.container.style.bottom = '110px';
+        this.container.style.zIndex = '99999';
+        
+        console.log('🔄 Reset toolbar to default position');
+    }
+    
+    makeElementEditable(element) {
+        // Store original content for comparison
+        const elementInfo = this.selectedElements[this.editingIndex];
+        
+        // Check current state and set save button accordingly
+        const currentText = element.textContent?.trim() || '';
+        const originalText = elementInfo.originalText;
+        const hasChanges = currentText !== originalText;
+        this.updateSaveButtonState(hasChanges);
+        
+        // Clean up existing event listeners if any (but don't change contentEditable yet)
+        if (this.cleanupEditableElement) {
+            // Remove old listeners only
+            element.removeEventListener('input', this.currentCheckForChanges);
+            element.removeEventListener('keyup', this.currentCheckForChanges);
+        }
+        
+        // Make element editable and focus
+        element.contentEditable = true;
+        element.focus();
+        
+        // Move cursor to the end of the text
+        const range = document.createRange();
+        const selection = window.getSelection();
+        range.selectNodeContents(element);
+        range.collapse(false); // false = collapse to end
+        selection.removeAllRanges();
+        selection.addRange(range);
+        
+        // Monitor content changes
+        const checkForChanges = () => {
+            const currentText = element.textContent?.trim() || '';
+            const originalText = elementInfo.originalText;
+            const hasChanges = currentText !== originalText;
+            
+            // Update element info with current text
+            elementInfo.text = currentText;
+            
+            // Update save button state based on changes
+            this.updateSaveButtonState(hasChanges);
+            
+            console.log(`Content check: "${currentText}" vs "${originalText}" - Changed: ${hasChanges}`);
+        };
+        
+        // Store reference to current function for cleanup
+        this.currentCheckForChanges = checkForChanges;
+        
+        // Add event listeners for content changes
+        element.addEventListener('input', checkForChanges);
+        element.addEventListener('keyup', checkForChanges);
+        element.addEventListener('paste', () => {
+            // Check for changes after paste
+            setTimeout(checkForChanges, 10);
+        });
+        
+        // Store event cleanup function
+        this.cleanupEditableElement = () => {
+            element.contentEditable = false;
+            element.removeEventListener('input', checkForChanges);
+            element.removeEventListener('keyup', checkForChanges);
+            element.blur();
+        };
+    }
+    
+    updateSaveButtonState(hasChanges) {
+        if (this.saveTextBtn) {
+            if (hasChanges) {
+                this.saveTextBtn.disabled = false;
+                this.saveTextBtn.style.opacity = '1';
+                this.saveTextBtn.style.cursor = 'pointer';
+                console.log('✅ Save button enabled - changes detected');
+            } else {
+                this.saveTextBtn.disabled = true;
+                this.saveTextBtn.style.opacity = '0.5';
+                this.saveTextBtn.style.cursor = 'not-allowed';
+                console.log('❌ Save button disabled - no changes');
+            }
+        }
+    }
+    
+    clearAllSelections() {
+        // Clean up any editable elements
+        if (this.cleanupEditableElement) {
+            this.cleanupEditableElement();
+            this.cleanupEditableElement = null;
+        }
+        
+        // Remove selection borders from all selected elements
+        this.selectedElements.forEach(elementInfo => {
+            this.removeSelectionBorder(elementInfo.element);
+        });
+        
+        // Clear the selections array
+        this.selectedElements = [];
+        this.renderSelected();
+        this.editingIndex = -1;
+        
+        // Reset toolbar position when selections are cleared
+        this.resetToolbarPosition();
+        
+        // Hide editing sections
+        this.textEditingSection.style.display = 'none';
+        this.aiEditSection.style.display = 'none';
+        
+        this.showStatus('All selections cleared', 'info');
+        console.log('🗑️ Cleared all selections');
     }
     
     getElementAttributes(element) {
@@ -290,33 +522,12 @@ class AdminToolbar {
     }
     
     renderSelected() {
-        if (this.selectedElements.length === 0) {
-            this.selectedContainer.innerHTML = '<div class="no-elements">No elements selected</div>';
-            this.editModeSection.style.display = 'none';
-            return;
-        }
-        
-        this.selectedContainer.innerHTML = this.selectedElements.map((el, i) => {
-            let displayText = el.text || 'No text content';
-            if (displayText.length > 30) {
-                displayText = displayText.substring(0, 30) + '...';
-            }
-            
-            return `
-                <div class="selected-element ${this.editingIndex === i ? 'editing' : ''}" onclick="window.adminToolbar.editElement(${i})">
-                    <div class="element-info">
-                        <div class="element-tag">&lt;${el.tag}&gt;</div>
-                        <div class="element-text" title="${el.text}">${displayText}</div>
-                    </div>
-                    <div class="element-actions">
-                        <button class="btn-remove" onclick="event.stopPropagation(); window.adminToolbar.removeElement(${i})" title="Remove">🗑️</button>
-                    </div>
-                </div>
-            `;
-        }).join('');
-        
         // Show edit mode section if we have elements
-        this.editModeSection.style.display = 'block';
+        if (this.selectedElements.length > 0) {
+            this.editModeSection.style.display = 'block';
+        } else {
+            this.editModeSection.style.display = 'none';
+        }
     }
     
     editElement(index) {
@@ -328,10 +539,12 @@ class AdminToolbar {
         
         // Show edit interface based on current mode
         if (this.currentEditMode === 'text') {
-            this.textEditInput.value = element.text;
             this.textEditingSection.style.display = 'block';
             this.aiEditSection.style.display = 'none';
-            this.textEditInput.focus();
+            
+            // Make element editable and set up content monitoring
+            this.makeElementEditable(element.element);
+            
         } else {
             this.promptInput.value = '';
             this.aiEditSection.style.display = 'block';
@@ -340,20 +553,11 @@ class AdminToolbar {
         }
     }
     
-    updatePreview() {
-        if (this.editingIndex < 0) return;
-        const newText = this.textEditInput.value;
-        const element = this.selectedElements[this.editingIndex];
-        
-        // Live preview - update the actual element
-        element.element.textContent = newText;
-    }
-    
     async saveTextToFile() {
         if (this.editingIndex < 0) return;
         
-        const newText = this.textEditInput.value.trim();
         const element = this.selectedElements[this.editingIndex];
+        const newText = element.text.trim();
         
         if (newText === element.originalText) {
             this.showStatus('No changes to save', 'info');
@@ -377,11 +581,26 @@ class AdminToolbar {
             const result = await response.json();
             
             if (result.success) {
+                // Update the DOM element's text content to show the saved changes
+                element.element.textContent = newText;
+                
+                // Update the stored element info
                 element.text = newText;
                 element.originalText = newText;
+                element.originalHTML = element.element.innerHTML; // Update stored HTML to reflect changes
+                
                 this.renderSelected();
                 this.cancelTextEdit();
                 this.showStatus('✅ Saved to file successfully!', 'success');
+                
+                // Increment edit counter when user saves text edits
+                console.log('🔍 Checking for incrementEditCount function:', typeof window.incrementEditCount);
+                console.log('🔍 Current edit count:', window.editCount);
+                if (window.incrementEditCount) {
+                    window.incrementEditCount();
+                } else {
+                    console.error('❌ incrementEditCount function not found!');
+                }
             } else {
                 this.showStatus('❌ Failed to save: ' + (result.error || result.message), 'error');
             }
@@ -405,41 +624,289 @@ class AdminToolbar {
             return;
         }
         
+        // Show loading state on buttons and elements
+        this.setAIProcessingState(true);
         this.setState('loading');
         
         if (isBatchMode && this.selectedElements.length > 1) {
-            this.showStatus(`Processing AI request for ${this.selectedElements.length} elements...`, 'loading');
+            this.showStatus(`Generating preview for ${this.selectedElements.length} elements...`, 'loading');
         } else {
-            this.showStatus('Processing AI request...', 'loading');
+            this.showStatus('Generating AI preview...', 'loading');
         }
         
         try {
             const elementsToEdit = isBatchMode ? this.selectedElements : [this.selectedElements[this.editingIndex] || this.selectedElements[0]];
             const fullPrompt = this.generateBatchPrompt(prompt, elementsToEdit, isBatchMode);
+            
+            // Show "AI is processing..." on selected elements
+            this.showAIProcessingOnElements(elementsToEdit);
+            
             const result = await this.sendToBackend(fullPrompt, elementsToEdit);
             
-            if (result.success) {
+            if (result.success && result.is_selective_preview) {
                 this.setState('success');
-                const message = isBatchMode ? 
-                    `AI changes applied to ${elementsToEdit.length} elements successfully!` : 
-                    'AI changes applied successfully!';
-                this.showStatus(message, 'success');
-                this.promptInput.value = '';
-                this.aiEditSection.style.display = 'none';
-                this.editingIndex = -1;
-                // Clear selections before reload
-                this.selectedElements = [];
-                this.renderSelected();
-                // Refresh the page to show changes
-                setTimeout(() => window.location.reload(), 1000);
+                this.showStatus('AI preview generated! Review changes on the page.', 'success');
+                
+                // Hide processing indicators and show selective preview interface
+                this.hideAIProcessingOnElements(elementsToEdit);
+                this.showSelectivePreview(result, elementsToEdit);
+                
             } else {
                 this.setState('error');
-                this.showStatus(result.error || 'Failed to apply AI changes', 'error');
+                this.showStatus(result.error || 'Failed to generate AI preview', 'error');
+                this.hideAIProcessingOnElements(elementsToEdit);
             }
         } catch (error) {
             console.error('Error submitting prompt:', error);
             this.setState('error');
             this.showStatus('Error processing AI request', 'error');
+            
+            // Hide processing indicators on error
+            const elementsToEdit = isBatchMode ? this.selectedElements : [this.selectedElements[this.editingIndex] || this.selectedElements[0]];
+            this.hideAIProcessingOnElements(elementsToEdit);
+        } finally {
+            // Always restore button states
+            this.setAIProcessingState(false);
+        }
+    }
+    
+    showSelectivePreview(result, elementsToEdit) {
+        console.log('🔍 Selective AI Preview Result:', result);
+        console.log('🔍 Element updates:', result.element_updates);
+        
+        // Store original content of each element for restore
+        this.originalElementContent = {};
+        
+        // Apply selective preview to specific elements only
+        this.applySelectivePreview(result.element_updates, elementsToEdit);
+        
+        // Show preview interface in toolbar
+        this.aiEditSection.innerHTML = `
+            <div class="ai-preview-content">
+                <div class="preview-actions">
+                    <button class="preview-btn save-ai-btn" id="save-ai-changes">
+                        💾 Save Changes
+                    </button>
+                    <button class="preview-btn discard-ai-btn" id="discard-ai-changes">
+                        ❌ Discard & Restore
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Store preview data for saving
+        this.currentPreview = {
+            element_updates: result.element_updates,
+            target_file: result.target_file,
+            project_path: result.project_path,
+            elementsToEdit: elementsToEdit
+        };
+        
+        console.log('🔍 Stored selective preview data:', this.currentPreview);
+        
+        // Attach event listeners
+        document.getElementById('save-ai-changes').addEventListener('click', () => this.saveSelectiveAIChanges());
+        document.getElementById('discard-ai-changes').addEventListener('click', () => this.discardSelectiveAIChanges());
+    }
+    
+    applySelectivePreview(elementUpdates, elementsToEdit) {
+        console.log('🔍 Applying selective preview to', elementUpdates.length, 'elements');
+        
+        try {
+            // Apply updates to each specific element
+            elementUpdates.forEach((update, index) => {
+                const elementIndex = update.element_index;
+                const newContent = update.new_content;
+                
+                // Get the corresponding selected element
+                const selectedElement = elementsToEdit[elementIndex];
+                if (!selectedElement || !selectedElement.element) {
+                    console.warn(`⚠️ Element ${elementIndex} not found in selected elements`);
+                    return;
+                }
+                
+                const domElement = selectedElement.element;
+                
+                // Store original content for restore functionality
+                this.originalElementContent[elementIndex] = {
+                    innerHTML: domElement.innerHTML,
+                    textContent: domElement.textContent
+                };
+                
+                // Apply the new content to this specific element
+                domElement.innerHTML = newContent;
+                
+                // Add visual indicator that this element is in preview mode
+                domElement.classList.add('admin-preview-active');
+                
+                console.log(`✅ Applied preview to element ${elementIndex}:`, domElement.tagName);
+            });
+            
+            this.showStatus(`✅ Preview applied to ${elementUpdates.length} element(s) - images and other content untouched!`, 'success');
+            
+        } catch (error) {
+            console.error('❌ Error applying selective preview:', error);
+            this.showStatus('❌ Error applying preview to selected elements', 'error');
+        }
+    }
+    
+    async saveSelectiveAIChanges() {
+        if (!this.currentPreview) {
+            this.showStatus('No preview data available', 'error');
+            return;
+        }
+        
+        this.showStatus('Saving AI changes to file...', 'loading');
+        
+        try {
+            const response = await fetch('/api/save-ai-changes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    element_updates: this.currentPreview.element_updates,
+                    target_file: this.currentPreview.target_file,
+                    project_path: this.currentPreview.project_path,
+                    elements: this.currentPreview.elementsToEdit.map(el => ({
+                        tag: el.tag,
+                        id: el.id,
+                        classes: el.classes,
+                        text: el.text,
+                        attributes: el.attributes
+                    }))
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.showStatus(`✅ AI changes saved! Updated ${result.updates_applied} element(s).`, 'success');
+                
+                // Increment edit counter when AI edits are saved
+                console.log('🔍 AI Edit Save - Checking for incrementEditCount function:', typeof window.incrementEditCount);
+                if (window.incrementEditCount) {
+                    window.incrementEditCount();
+                } else {
+                    console.error('❌ AI Edit Save - incrementEditCount function not found!');
+                }
+                
+                // Remove preview indicators from elements
+                this.removePreviewIndicators();
+                
+                // Clear preview data and restore normal UI
+                this.currentPreview = null;
+                this.originalElementContent = null;
+                
+                // Reset AI edit section to normal state
+                this.resetAIEditSection();
+                
+                // Remove selection styles and clear selections
+                this.selectedElements = [];
+                this.renderSelected();
+                this.aiEditSection.style.display = 'none';
+                this.editingIndex = -1;
+                
+                // Reset toolbar position since selections are cleared
+                this.resetToolbarPosition();
+                
+                
+                // Update status
+                this.showStatus('✅ AI changes saved! Use "Save Changes" button to commit to git.', 'success');
+            } else {
+                this.showStatus('❌ Failed to save AI changes: ' + (result.error || result.message), 'error');
+            }
+        } catch (error) {
+            this.showStatus('❌ Network error while saving', 'error');
+            console.error('Save selective AI changes error:', error);
+        }
+    }
+    
+    discardSelectiveAIChanges() {
+        console.log('🗑️ Discarding selective AI preview...');
+        
+        try {
+            // Remove all selected elements from the DOM
+            if (this.currentPreview?.elementsToEdit) {
+                this.currentPreview.elementsToEdit.forEach((elementInfo, index) => {
+                    if (elementInfo.element) {
+                        elementInfo.element.remove();
+                        console.log(`🗑️ Removed element ${index}:`, elementInfo.tag);
+                    }
+                });
+            }
+            
+            this.showStatus('🗑️ Elements removed successfully', 'success');
+            
+        } catch (error) {
+            console.error('❌ Error removing elements:', error);
+            this.showStatus('❌ Error removing elements', 'error');
+        }
+        
+        // Clear preview data
+        this.currentPreview = null;
+        this.originalElementContent = null;
+        
+        // Reset AI edit section
+        this.resetAIEditSection();
+        
+        // Clear selections and hide editing interface
+        this.selectedElements = [];
+        this.renderSelected();
+        this.aiEditSection.style.display = 'none';
+        this.editingIndex = -1;
+        
+        // Reset toolbar position since selections are cleared
+        this.resetToolbarPosition();
+        
+        
+        console.log('🗑️ Elements discarded and removed from DOM');
+    }
+    
+    removePreviewIndicators() {
+        // Remove preview indicators from all elements that have them
+        const previewElements = document.querySelectorAll('.admin-preview-active');
+        previewElements.forEach(element => {
+            element.classList.remove('admin-preview-active');
+        });
+        console.log(`🔧 Removed preview indicators from ${previewElements.length} elements`);
+    }
+    
+    resetAIEditSection() {
+        // Reset the AI edit section to original state
+        this.aiEditSection.innerHTML = `
+            <div class="batch-edit-options">
+                <label class="batch-checkbox">
+                    <input type="checkbox" id="batch-edit-mode" />
+                    <span class="checkmark"></span>
+                    Apply the same edit instruction to all selected elements
+                </label>
+            </div>
+            <textarea 
+                id="prompt-input" 
+                class="edit-input"
+                placeholder="Describe the changes you want AI to make..."
+                rows="3"
+            ></textarea>
+            <div class="ai-edit-actions">
+                <button class="edit-submit-btn" id="submit-prompt">
+                    ✨ Apply AI Changes
+                </button>
+                <button class="text-edit-btn cancel-btn" id="cancel-ai-btn">
+                    cancel
+                </button>
+            </div>
+        `;
+        
+        // Re-attach event listeners
+        this.batchEditCheckbox = document.getElementById('batch-edit-mode');
+        this.promptInput = document.getElementById('prompt-input');
+        this.submitPromptBtn = document.getElementById('submit-prompt');
+        this.cancelAiBtn = document.getElementById('cancel-ai-btn');
+        this.submitPromptBtn.addEventListener('click', () => this.submitPrompt());
+        this.cancelAiBtn.addEventListener('click', () => this.cancelAiEdit());
+        
+        // Clear prompt input
+        if (this.promptInput) {
+            this.promptInput.value = '';
         }
     }
     
@@ -453,44 +920,6 @@ class AdminToolbar {
             '';
         
         return `User Request: ${userPrompt}\n\nSelected Elements:\n${elements}${batchInstruction}\n\nIMPORTANT: Preserve all existing CSS classes, styling, and theme elements. Only modify the specific content requested while maintaining the current design and layout.`;
-    }
-    
-    async sendToBatchBackend(prompt, elementsToEdit) {
-        try {
-            const response = await fetch('/api/admin-edit', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    prompt: prompt,
-                    elements: elementsToEdit.map(el => ({
-                        tag: el.tag,
-                        id: el.id,
-                        classes: el.classes,
-                        text: el.text,
-                        originalText: el.originalText,
-                        attributes: el.attributes
-                    })),
-                    url: window.location.pathname,
-                })
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            return await response.json();
-        } catch (error) {
-            console.error('Error in sendToBatchBackend:', error);
-            throw error;
-        }
-    }
-    
-    generatePrompt(userPrompt) {
-        const elements = this.selectedElements.map(el => {
-            return `Element ${el.tag}${el.id ? '#' + el.id : ''}${el.classes ? '.' + el.classes.replace(/\s+/g, '.') : ''}: "${el.text}"`;
-        }).join('\n');
-        
-        return `User Request: ${userPrompt}\n\nSelected Elements:\n${elements}\n\nIMPORTANT: Preserve all existing CSS classes, styling, and theme elements. Only modify the specific content requested while maintaining the current design and layout.`;
     }
     
     async sendToBackend(prompt, elementsToEdit = null) {
@@ -555,26 +984,86 @@ class AdminToolbar {
     }
     
     cancelTextEdit() {
-        this.textEditingSection.style.display = 'none';
-        this.aiEditSection.style.display = 'none';
-        this.editingIndex = -1;
-        
-        // Update visual state
-        this.renderSelected();
-        
-        this.showStatus('Edit cancelled', 'info');
-    }
-    
-    removeElement(index) {
-        if (this.editingIndex === index) {
-            this.cancelTextEdit();
-        } else if (this.editingIndex > index) {
-            this.editingIndex--;
+        // Restore original content if editing
+        if (this.editingIndex >= 0 && this.cleanupEditableElement) {
+            const elementInfo = this.selectedElements[this.editingIndex];
+            if (elementInfo && elementInfo.element) {
+                // Restore original HTML structure to preserve formatting
+                elementInfo.element.innerHTML = elementInfo.originalHTML;
+                elementInfo.text = elementInfo.originalText;
+                console.log('🔄 Restored original HTML structure');
+            }
         }
         
-        this.selectedElements.splice(index, 1);
-        this.renderSelected();
-        this.showStatus('Element removed', 'info');
+        // Clear all selections and remove borders
+        this.clearAllSelections();
+        
+        this.showStatus('Edit cancelled - original structure restored', 'info');
+    }
+    
+    setAIProcessingState(isProcessing) {
+        if (this.submitPromptBtn) {
+            if (isProcessing) {
+                this.submitPromptBtn.disabled = true;
+                this.submitPromptBtn.innerHTML = `
+                    <div class="spinner"></div>
+                    Apply AI Changes
+                `;
+                this.submitPromptBtn.style.cursor = 'not-allowed';
+            } else {
+                this.submitPromptBtn.disabled = false;
+                this.submitPromptBtn.innerHTML = '✨ Apply AI Changes';
+                this.submitPromptBtn.style.cursor = 'pointer';
+            }
+        }
+        
+        if (this.cancelAiBtn) {
+            this.cancelAiBtn.disabled = isProcessing;
+            this.cancelAiBtn.style.opacity = isProcessing ? '0.5' : '1';
+            this.cancelAiBtn.style.cursor = isProcessing ? 'not-allowed' : 'pointer';
+        }
+        
+        console.log(`🔄 AI processing state: ${isProcessing ? 'enabled' : 'disabled'}`);
+    }
+    
+    showAIProcessingOnElements(elementsToEdit) {
+        elementsToEdit.forEach(elementInfo => {
+            if (elementInfo.element) {
+                // Store current content for restoration
+                elementInfo.processingBackupHTML = elementInfo.element.innerHTML;
+                
+                // Replace element content with processing message
+                elementInfo.element.innerHTML = 'AI is processing...';
+                elementInfo.element.classList.add('ai-processing-element');
+                
+                console.log('🤖 Replaced element content with processing message');
+            }
+        });
+    }
+    
+    hideAIProcessingOnElements(elementsToEdit) {
+        elementsToEdit.forEach(elementInfo => {
+            if (elementInfo.processingBackupHTML !== undefined) {
+                // Restore original content
+                elementInfo.element.innerHTML = elementInfo.processingBackupHTML;
+                elementInfo.element.classList.remove('ai-processing-element');
+                delete elementInfo.processingBackupHTML;
+                
+                console.log('🔄 Restored original element content');
+            }
+        });
+    }
+    
+    cancelAiEdit() {
+        // Clear the AI prompt input
+        if (this.promptInput) {
+            this.promptInput.value = '';
+        }
+        
+        // Clear all selections and remove borders
+        this.clearAllSelections();
+        
+        this.showStatus('AI edit cancelled - selections cleared', 'info');
     }
     
     highlightElement(element) {
@@ -632,7 +1121,6 @@ class AdminToolbar {
         console.log('📢', message);
     }
     
-
     
     injectStyles() {
         const styleId = 'admin-toolbar-styles';
@@ -649,12 +1137,14 @@ class AdminToolbar {
                 width: 360px;
                 max-height: 520px;
                 background: #ffffff;
-                border: 1px solid #f1f5f9;
-                border-radius: 12px;
+                border: 1px solid #e2e8f0;
+                border-radius: 16px;
                 box-shadow: 
-                    0 20px 40px rgba(0, 0, 0, 0.04),
-                    0 4px 16px rgba(0, 0, 0, 0.02),
-                    0 0 0 0.5px rgba(0, 0, 0, 0.03);
+                    0 32px 64px rgba(0, 0, 0, 0.12),
+                    0 16px 32px rgba(0, 0, 0, 0.08),
+                    0 8px 16px rgba(0, 0, 0, 0.06),
+                    0 4px 8px rgba(0, 0, 0, 0.04),
+                    0 0 0 1px rgba(0, 0, 0, 0.08);
                 z-index: 99999;
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
                 font-size: 14px;
@@ -663,10 +1153,8 @@ class AdminToolbar {
                 transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
                 pointer-events: none;
                 overflow: hidden;
-                backdrop-filter: blur(8px);
+                backdrop-filter: blur(12px);
             }
-            
-
             
             .admin-toolbar-popup.visible {
                 transform: translateY(0) scale(1);
@@ -720,12 +1208,14 @@ class AdminToolbar {
                     0 0 0 0.5px rgba(239, 68, 68, 0.1);
             }
             
-            
             .toolbar-popup-content {
-                padding: 24px;
+                padding-top: 7px;
+                padding-bottom: 18px;
+                padding-left: 22px;
+                padding-right: 22px;
                 display: flex;
                 flex-direction: column;
-                gap: 20px;
+                gap: 18px;
                 max-height: 480px;
                 overflow-y: auto;
                 position: relative;
@@ -740,12 +1230,11 @@ class AdminToolbar {
                 letter-spacing: -0.025em;
             }
             
-
-            
             .close-btn {
                 position: absolute;
-                top: 12px;
-                right: 12px;
+                top: 10px;
+                right: 0px;
+                left: auto;
                 width: 28px;
                 height: 28px;
                 padding: 0;
@@ -759,6 +1248,8 @@ class AdminToolbar {
                 cursor: pointer;
                 transition: all 0.2s ease;
                 font-size: 11px;
+                z-index: 100010;
+                margin-left: auto;
             }
             
             .close-btn:hover {
@@ -767,57 +1258,8 @@ class AdminToolbar {
                 transform: scale(1.05);
             }
             
-            .selected-elements-section {
-                border-bottom: 1px solid #f1f5f9;
-                padding-bottom: 20px;
-            }
-            
-            .selected-elements-container {
-                max-height: 120px;
-                overflow-y: auto;
-            }
-            
-            .no-elements {
-                color: #94a3b8;
-                font-size: 13px;
-                padding: 16px;
-                text-align: center;
-                background: #fafbfc;
-                border: 1px solid #f1f5f9;
-                border-radius: 10px;
-                font-weight: 500;
-            }
-            
-            .selected-element {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 12px 16px;
-                background: #fbfcfd;
-                border: 1px solid #e2e8f0;
-                border-radius: 8px;
-                margin-bottom: 10px;
-                font-size: 13px;
-                transition: all 0.2s ease;
-                cursor: pointer;
-            }
-            
-            .selected-element:hover {
-                background: #f8fafc;
-                border-color: #cbd5e1;
-                transform: translateY(-1px);
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
-            }
-            
-            .selected-element.editing {
-                background: #f0fdf4;
-                border: 1px solid #bbf7d0;
-                box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.08);
-            }
-            
             .edit-mode-section {
                 border-bottom: 1px solid #f1f5f9;
-                padding-bottom: 20px;
             }
             
             .edit-mode-toggle {
@@ -860,62 +1302,7 @@ class AdminToolbar {
                 font-weight: 600;
             }
             
-            .element-info {
-                flex: 1;
-                min-width: 0;
-            }
-            
-            .element-tag {
-                font-weight: 600;
-                color: #475569;
-                font-size: 11px;
-                background: #f1f5f9;
-                padding: 3px 8px;
-                border-radius: 6px;
-                border: 1px solid #e2e8f0;
-                display: inline-block;
-                letter-spacing: 0.025em;
-            }
-            
-            .element-text {
-                color: #334155;
-                margin-top: 6px;
-                font-size: 12px;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                font-weight: 500;
-                line-height: 1.4;
-            }
-            
-            .element-actions {
-                display: flex;
-                gap: 4px;
-                margin-left: 8px;
-            }
-            
-            .btn-remove {
-                background: #fafbfc;
-                border: 1px solid #e2e8f0;
-                color: #ef4444;
-                border-radius: 6px;
-                padding: 6px 8px;
-                cursor: pointer;
-                font-size: 10px;
-                transition: all 0.2s ease;
-            }
-            
-            .btn-remove:hover {
-                background: #fef2f2;
-                border-color: #fecaca;
-                transform: scale(1.05);
-            }
-            
             .text-editing-section, .ai-edit-section {
-                border: 1px solid #e2e8f0;
-                border-radius: 12px;
-                padding: 20px;
-                background: #fafbfc;
                 position: relative;
             }
             
@@ -924,21 +1311,7 @@ class AdminToolbar {
                 background: #fafbfc;
             }
             
-            .text-edit-hint {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                background: #dcfce7;
-                border: 1px solid #86efac;
-                border-radius: 8px;
-                padding: 8px 12px;
-                margin-bottom: 12px;
-                font-size: 11px;
-                color: #16a34a;
-                font-weight: 500;
-            }
-            
-            .text-edit-input, .edit-input {
+            .edit-input {
                 width: 100%;
                 padding: 14px 16px;
                 border: 1px solid #e2e8f0;
@@ -955,53 +1328,69 @@ class AdminToolbar {
                 line-height: 1.5;
             }
             
-            .text-edit-input:focus, .edit-input:focus {
+            .edit-input:focus {
                 border-color: #94a3b8;
                 box-shadow: 
                     0 0 0 3px rgba(148, 163, 184, 0.1),
                     0 2px 8px rgba(0, 0, 0, 0.04);
             }
             
-            .text-edit-actions {
+            .text-edit-actions, .ai-edit-actions {
                 display: flex;
                 gap: 8px;
             }
             
+            .ai-edit-actions {
+                margin-top: 12px;
+            }
+            
             .text-edit-btn {
-                flex: 1;
-                padding: 11px 16px;
+                padding: 12px 20px;
                 border: none;
                 border-radius: 8px;
                 cursor: pointer;
-                font-size: 12px;
-                font-weight: 600;
+                font-size: 13px;
+                font-weight: 500;
                 transition: all 0.2s ease;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                gap: 6px;
+                text-transform: lowercase;
+                font-family: inherit;
             }
             
             .text-edit-btn.save-btn {
-                background: #0f172a;
+                background: #22c55e;
                 color: white;
+                flex: 1;
+                min-width: 80px;
             }
             
-            .text-edit-btn.save-btn:hover {
-                background: #1e293b;
+            .text-edit-btn.save-btn:hover:not(:disabled) {
+                background: #16a34a;
                 transform: translateY(-1px);
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
             }
             
-            .text-edit-btn.cancel-text {
-                background: #f8fafc;
-                border: 1px solid #e2e8f0;
-                color: #64748b;
+            .text-edit-btn.save-btn:disabled {
+                background: #94a3b8 !important;
+                cursor: not-allowed !important;
+                opacity: 0.5 !important;
+                transform: none !important;
+                box-shadow: none !important;
             }
             
-            .text-edit-btn.cancel-text:hover {
-                background: #f1f5f9;
-                color: #475569;
+            .text-edit-btn.cancel-btn {
+                background: #ef4444;
+                color: white;
+                flex: 1;
+                min-width: 80px;
+            }
+            
+            .text-edit-btn.cancel-btn:hover {
+                background: #dc2626;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
             }
             
             .edit-submit-btn {
@@ -1021,10 +1410,17 @@ class AdminToolbar {
                 gap: 8px;
             }
             
-            .edit-submit-btn:hover {
+            .edit-submit-btn:hover:not(:disabled) {
                 background: #1e293b;
                 transform: translateY(-1px);
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            }
+            
+            .edit-submit-btn:disabled {
+                background: #64748b !important;
+                cursor: not-allowed !important;
+                transform: none !important;
+                box-shadow: none !important;
             }
             
             .toolbar-actions {
@@ -1063,8 +1459,12 @@ class AdminToolbar {
             }
             
             /* Element Selection Styles */
+            body.admin-selecting {
+                cursor: crosshair !important;
+            }
+            
             body.admin-selecting * {
-                outline: none !important;
+                cursor: crosshair !important;
             }
             
             body.admin-selecting *:hover {
@@ -1160,11 +1560,201 @@ class AdminToolbar {
                 color: #475569;
             }
             
+            /* AI Preview Styles */
+            .ai-preview-content {
+                text-align: center;
+            }
+            
+            .preview-actions {
+                display: flex;
+                gap: 8px;
+            }
+            
+            .preview-btn {
+                flex: 1;
+                padding: 12px 16px;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 12px;
+                font-weight: 600;
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+            }
+            
+            .save-ai-btn {
+                background: #16a34a;
+                color: white;
+            }
+            
+            .save-ai-btn:hover {
+                background: #15803d;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
+            }
+            
+            .discard-ai-btn {
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+                color: #64748b;
+            }
+            
+            .discard-ai-btn:hover {
+                background: #f1f5f9;
+                color: #ef4444;
+                border-color: #fecaca;
+            }
+            
+            /* Spinner for loading states */
+            .spinner {
+                display: inline-block;
+                width: 14px;
+                height: 14px;
+                border: 2px solid #ffffff40;
+                border-top: 2px solid #ffffff;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+                margin-right: 8px;
+            }
+            
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            
+            /* AI Processing Overlay */
+            .ai-processing-overlay {
+                background: #1e293b;
+                color: white;
+                padding: 6px 12px;
+                border-radius: 6px;
+                font-size: 12px;
+                font-weight: 600;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                pointer-events: none;
+                z-index: 99999;
+                animation: pulse 2s infinite;
+            }
+            
+            @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.7; }
+            }
+            
+            /* AI Processing Element */
+            .ai-processing-element {
+                background: #f3f4f6 !important;
+                color: #6b7280 !important;
+                font-style: italic !important;
+                text-align: center !important;
+                padding: 20px !important;
+                border: 2px dashed #d1d5db !important;
+                border-radius: 8px !important;
+                animation: pulse 2s infinite;
+            }
+            
+            /* Preview indicator for elements in selective preview mode */
+            .admin-preview-active {
+                outline: 2px solid #16a34a !important;
+                outline-offset: 2px !important;
+                background-color: rgba(22, 163, 74, 0.1) !important;
+                position: relative !important;
+            }
+            
+            .admin-preview-active::before {
+                content: "🔍 Preview";
+                position: absolute;
+                top: -25px;
+                left: 0;
+                background: #16a34a;
+                color: white;
+                padding: 2px 8px;
+                border-radius: 4px;
+                font-size: 11px;
+                font-weight: 600;
+                z-index: 99999;
+                pointer-events: none;
+            }
+            
+            /* Selected Element Border */
+            .admin-selected-element {
+                outline: 2px dashed #3b82f6 !important;
+                outline-offset: 2px !important;
+            }
+            
+            /* Edit Button */
+            #admin-toolbar-button {
+                position: fixed;
+                bottom: 21px;
+                right: 29px;
+                z-index: 99999;
+                align-items: center;
+                background: white !important;
+                color: black !important;
+                padding: 10px 24px;
+                border-radius: 12px;
+                font-weight: 600;
+                border: 1px solid #1a1a1a;
+                box-shadow: 
+                    0 8px 24px rgba(0, 0, 0, 0.25),
+                    0 2px 8px rgba(0, 0, 0, 0.15);
+                backdrop-filter: blur(8px);
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+                font-size: 14px;
+                cursor: pointer;
+                transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+                display: flex;
+            }
+            
+            #admin-toolbar-button:hover {
+                background: #ffffff !important;
+                color: #000000 !important;
+                transform: translateY(-1px);
+                box-shadow: 
+                    0 12px 32px rgba(0, 0, 0, 0.3),
+                    0 4px 12px rgba(0, 0, 0, 0.2);
+            }
+            
+            /* Top Div */
+            .admin-top-div {
+                position: fixed;
+                bottom: 15px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 96%;
+                z-index: 99999;
+                align-items: center;
+                background: #000000;
+                color: #ffffff;
+                padding: 14px 24px;
+                padding-bottom: 35px;
+                padding-top: 20px;
+                border-radius: 12px;
+                font-weight: 600;
+                border: 1px solid #1a1a1a;
+                box-shadow: 
+                    0 8px 24px rgba(0, 0, 0, 0.25),
+                    0 2px 8px rgba(0, 0, 0, 0.15);
+                backdrop-filter: blur(8px);
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+                font-size: 14px;
+                transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+                display: flex;
+                justify-content: center;
+            }
+            
+            
+            
             /* Responsive adjustments */
             @media (max-width: 768px) {
                 .admin-toolbar-popup {
                     width: 320px;
                 }
+                
+                
             }
             
             @media (max-width: 480px) {
@@ -1175,8 +1765,6 @@ class AdminToolbar {
                     max-width: none;
                 }
             }
-
-
         `;
         
         document.head.appendChild(style);

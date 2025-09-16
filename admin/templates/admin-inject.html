@@ -336,8 +336,8 @@ function showAuthModal() {
 const ADMIN_SESSION_KEY = 'admin_authenticated';
 window.isAuthenticated = localStorage.getItem(ADMIN_SESSION_KEY) === 'true';
 
-// Check if we're in admin mode based on URL
-const isAdminMode = window.location.pathname.includes('/admin') || window.location.search.includes('admin=true');
+// Check if we're in admin mode based on URL OR authentication state
+const isAdminMode = window.location.pathname.includes('/admin') || window.location.search.includes('admin=true') || window.isAuthenticated;
 
 // Function to set authentication state
 function setAuthenticationState(authenticated) {
@@ -355,6 +355,9 @@ function hideAdminUI() {
     const editBtn = document.getElementById('admin-toolbar-button');
     const versionDropdown = document.getElementById('version-history-dropdown');
     const toolbar = document.getElementById('admin-toolbar');
+    const adminTopDiv = document.getElementById('admin-top-div');
+    const saveChangesBtn = document.getElementById('admin-save-changes-button');
+    const undoBtn = document.getElementById('admin-undo-button');
     
     if (logoutBtn) {
         logoutBtn.style.display = 'none';
@@ -368,6 +371,15 @@ function hideAdminUI() {
     if (toolbar) {
         toolbar.style.display = 'none';
     }
+    if (adminTopDiv) {
+        adminTopDiv.style.display = 'none';
+    }
+    if (saveChangesBtn) {
+        saveChangesBtn.style.display = 'none';
+    }
+    if (undoBtn) {
+        undoBtn.style.display = 'none';
+    }
 }
 
 // Function to logout and redirect
@@ -378,7 +390,11 @@ function logoutAdmin() {
     // Redirect to the same page without /admin
     const currentPath = window.location.pathname;
     if (currentPath.includes('/admin')) {
-        const newPath = currentPath.replace('/admin', '');
+        let newPath = currentPath.replace('/admin', '');
+        // Ensure path ends with / for proper relative path resolution
+        if (newPath && !newPath.endsWith('/')) {
+            newPath += '/';
+        }
         window.location.href = newPath || '/';
     } else if (window.location.search.includes('admin=true')) {
         const url = new URL(window.location);
@@ -434,16 +450,15 @@ const loadAdminToolbar = () => {
                 `;
                 logoutButton.style.cssText = `
                     position: fixed;
-                    bottom: 40px;
-                    right: 110px;
+                    bottom: 22px;
+                    right: 117px;
                     z-index: 99999;
                     align-items: center;
                     background: red;
                     color: white;
-                    padding: 14px 24px;
+                    padding: 10px 24px;
                     border-radius: 12px;
                     font-weight: 600;
-                    border: 0.5px solid #e2e8f0;
                     box-shadow: 
                         0 8px 24px rgba(0, 0, 0, 0.08),
                         0 2px 8px rgba(0, 0, 0, 0.04);
@@ -455,6 +470,66 @@ const loadAdminToolbar = () => {
                     display: ${window.isAuthenticated ? 'flex' : 'none'};
                 `;
 
+                // Create save changes button
+                const saveChangesButton = document.createElement('div');
+                saveChangesButton.id = 'admin-save-changes-button';
+                saveChangesButton.innerHTML = `
+                    <span>Save Changes</span>
+                `;
+                saveChangesButton.style.cssText = `
+                    position: fixed;
+                    bottom: 22px;
+                    right: 230px;
+                    z-index: 99999;
+                    align-items: center;
+                    background: #059669;
+                    color: white;
+                    padding: 9px 18px;
+                    border-radius: 12px;
+                    font-weight: 600;
+                    box-shadow: 
+                        0 8px 24px rgba(0, 0, 0, 0.08),
+                        0 2px 8px rgba(0, 0, 0, 0.04);
+                    backdrop-filter: blur(8px);
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+                    font-size: 14px;
+                    cursor: not-allowed;
+                    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+                    opacity: 0.5;
+                    display: none;
+                `;
+                saveChangesButton.disabled = true;
+
+                // Create undo button
+                const undoButton = document.createElement('div');
+                undoButton.id = 'admin-undo-button';
+                undoButton.innerHTML = `
+                    <span>Undo</span>
+                `;
+                undoButton.style.cssText = `
+                    position: fixed;
+                    bottom: 22px;
+                    right: 390px;
+                    z-index: 99999;
+                    align-items: center;
+                    background: #ef4444;
+                    color: white;
+                    padding: 9px 18px;
+                    border-radius: 12px;
+                    font-weight: 600;
+                    box-shadow: 
+                        0 8px 24px rgba(0, 0, 0, 0.08),
+                        0 2px 8px rgba(0, 0, 0, 0.04);
+                    backdrop-filter: blur(8px);
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+                    font-size: 14px;
+                    cursor: not-allowed;
+                    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+                    opacity: 0.5;
+                    display: none;
+                `;
+                undoButton.disabled = true;
+
                 // Create admin toolbar button beside the LintAI watermark
                 const adminButton = document.createElement('div');
                 adminButton.id = 'admin-toolbar-button';
@@ -463,13 +538,13 @@ const loadAdminToolbar = () => {
                 `;
                 adminButton.style.cssText = `
                     position: fixed;
-                    bottom: 40px;
-                    right: 20px;
+                    bottom: 21px;
+                    right: 29px;
                     z-index: 99999;
                     align-items: center;
-                    background: #000000;
-                    color: #ffffff;
-                    padding: 14px 24px;
+                    background: white;
+                    color: black;
+                    padding: 10px 24px;
                     border-radius: 12px;
                     font-weight: 600;
                     border: 1px solid #1a1a1a;
@@ -508,8 +583,8 @@ const loadAdminToolbar = () => {
                 `;
                 versionDropdown.style.cssText = `
                     position: fixed;
-                    bottom: 40px;
-                    left: 20px;
+                    bottom: 18px;
+                    left: 25px;
                     z-index: 99999;
                     background: #000000;
                     padding: 5px 5px;
@@ -525,18 +600,19 @@ const loadAdminToolbar = () => {
                 rollbackButton.innerHTML = '↺ Rollback';
                 rollbackButton.disabled = true;
                 rollbackButton.style.cssText = `
-                    background: #ffffff;
-                    color: #ef4444;
-                    border: 1px solid #e2e8f0;
+                    background: #f1f5f9;
+                    color: #94a3b8;
+                    border: 1px solid #cbd5e1;
                     border-radius: 8px;
                     padding: 10px 16px;
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
                     font-size: 13px;
                     font-weight: 600;
-                    cursor: pointer;
+                    cursor: not-allowed;
                     transition: all 0.2s ease;
-                    opacity: 0.6;
-                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+                    opacity: 0.7;
+                    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+                    filter: grayscale(100%);
                 `;
                 
                 versionDropdown.appendChild(rollbackButton);
@@ -546,7 +622,7 @@ const loadAdminToolbar = () => {
                 logoutButton.addEventListener('mouseenter', () => {
                     logoutButton.style.background = '#000000';
                     logoutButton.style.color = '#ffffff';
-                    logoutButton.style.borderColor = '#1a1a1a';
+                    logoutButton.style.borderColor = '#ffffff';
                     logoutButton.style.transform = 'translateY(-2px)';
                     logoutButton.style.boxShadow = '0 12px 32px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.15)';
                 });
@@ -562,6 +638,148 @@ const loadAdminToolbar = () => {
                 logoutButton.addEventListener('click', () => {
                     console.log('🚪 Logout button clicked!');
                     logoutAdmin();
+                });
+
+                // Add hover effects for save changes button
+                saveChangesButton.addEventListener('mouseenter', () => {
+                    if (!saveChangesButton.disabled) {
+                        saveChangesButton.style.background = '#047857';
+                        saveChangesButton.style.transform = 'translateY(-2px)';
+                        saveChangesButton.style.boxShadow = '0 12px 32px rgba(5, 150, 105, 0.3), 0 4px 12px rgba(5, 150, 105, 0.15)';
+                    }
+                });
+                saveChangesButton.addEventListener('mouseleave', () => {
+                    if (!saveChangesButton.disabled) {
+                        saveChangesButton.style.background = '#059669';
+                        saveChangesButton.style.transform = 'translateY(0px)';
+                        saveChangesButton.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04)';
+                    }
+                });
+
+                // Add click handler for save changes button
+                saveChangesButton.addEventListener('click', async () => {
+                    if (saveChangesButton.disabled) return;
+                    
+                    console.log('💾 Save changes button clicked!');
+                    saveChangesButton.disabled = true;
+                    saveChangesButton.style.cursor = 'not-allowed';
+                    saveChangesButton.style.opacity = '0.5';
+                    saveChangesButton.innerHTML = '<span>Publishing...</span>';
+                    
+                    // Also disable undo button during publish
+                    undoButton.disabled = true;
+                    undoButton.style.cursor = 'not-allowed';
+                    undoButton.style.opacity = '0.5';
+                    
+                    try {
+                        const response = await fetch('/api/publish', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                            saveChangesButton.innerHTML = '<span>✅ Published!</span>';
+                            undoButton.innerHTML = '<span>✅ Published!</span>';
+                            setTimeout(() => {
+                                saveChangesButton.style.display = 'none';
+                                undoButton.style.display = 'none';
+                                window.resetEditCount();
+                            }, 2000);
+                            
+                            if (window.adminToolbar && typeof window.adminToolbar.showStatus === 'function') {
+                                window.adminToolbar.showStatus('✅ All changes published to GitHub!', 'success');
+                            }
+                        } else {
+                            window.updateSaveChangesButton();
+                            
+                            if (window.adminToolbar && typeof window.adminToolbar.showStatus === 'function') {
+                                window.adminToolbar.showStatus('❌ Failed to publish: ' + (result.error || result.message), 'error');
+                            }
+                        }
+                    } catch (error) {
+                        window.updateSaveChangesButton();
+                        
+                        if (window.adminToolbar && typeof window.adminToolbar.showStatus === 'function') {
+                            window.adminToolbar.showStatus('❌ Network error while publishing', 'error');
+                        }
+                        console.error('Save changes error:', error);
+                    }
+                });
+
+                // Add hover effects for undo button
+                undoButton.addEventListener('mouseenter', () => {
+                    if (!undoButton.disabled) {
+                        undoButton.style.background = '#dc2626';
+                        undoButton.style.transform = 'translateY(-2px)';
+                        undoButton.style.boxShadow = '0 12px 32px rgba(239, 68, 68, 0.3), 0 4px 12px rgba(239, 68, 68, 0.15)';
+                    }
+                });
+                undoButton.addEventListener('mouseleave', () => {
+                    if (!undoButton.disabled) {
+                        undoButton.style.background = '#ef4444';
+                        undoButton.style.transform = 'translateY(0px)';
+                        undoButton.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04)';
+                    }
+                });
+
+                // Add click handler for undo button
+                undoButton.addEventListener('click', async () => {
+                    if (undoButton.disabled) return;
+                    
+                    console.log('↶ Undo button clicked!');
+                    
+                    // Confirm with user
+                    if (!confirm(`Are you sure you want to undo all ${window.editCount} unsaved changes? This cannot be undone.`)) {
+                        return;
+                    }
+                    
+                    undoButton.disabled = true;
+                    undoButton.style.cursor = 'not-allowed';
+                    undoButton.style.opacity = '0.5';
+                    undoButton.innerHTML = '<span>Undoing...</span>';
+                    
+                    try {
+                        const response = await fetch('/api/undo', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                            undoButton.innerHTML = '<span>✅ Undone!</span>';
+                            setTimeout(() => {
+                                window.resetEditCount();
+                                undoButton.style.display = 'none';
+                                saveChangesButton.style.display = 'none';
+                                undoButton.innerHTML = '<span>↶ Undo</span>';
+                                
+                                // Reload page to show reverted changes
+                                window.location.reload();
+                            }, 1500);
+                            
+                            if (window.adminToolbar && typeof window.adminToolbar.showStatus === 'function') {
+                                window.adminToolbar.showStatus('✅ All changes have been undone!', 'success');
+                            }
+                        } else {
+                            undoButton.innerHTML = '<span>↶ Undo</span>';
+                            window.updateSaveChangesButton();
+                            
+                            if (window.adminToolbar && typeof window.adminToolbar.showStatus === 'function') {
+                                window.adminToolbar.showStatus('❌ Failed to undo: ' + (result.error || result.message), 'error');
+                            }
+                        }
+                    } catch (error) {
+                        undoButton.innerHTML = '<span>↶ Undo</span>';
+                        window.updateSaveChangesButton();
+                        
+                        if (window.adminToolbar && typeof window.adminToolbar.showStatus === 'function') {
+                            window.adminToolbar.showStatus('❌ Network error while undoing', 'error');
+                        }
+                        console.error('Undo error:', error);
+                    }
                 });
 
                 // Add hover effect for edit button
@@ -634,6 +852,8 @@ const loadAdminToolbar = () => {
                 
                 console.log('➕ Adding admin buttons to page...');
                 document.body.appendChild(logoutButton);
+                document.body.appendChild(saveChangesButton);
+                document.body.appendChild(undoButton);
                 document.body.appendChild(adminButton);
                 document.body.appendChild(versionDropdown);
                 console.log('✅ Admin buttons and version controls added successfully');
@@ -772,6 +992,99 @@ const loadAdminToolbar = () => {
                     adminButton.style.display = 'flex';
                     versionDropdown.style.display = 'flex';
                     console.log('✅ Admin UI elements are now visible');
+                };
+
+                // Function to show save changes button when toolbar is opened
+                window.showSaveChangesButton = function() {
+                    console.log('💾 Showing save changes button...');
+                    saveChangesButton.style.display = 'flex';
+                };
+
+                // Function to hide save changes button when toolbar is closed
+                window.hideSaveChangesButton = function() {
+                    console.log('💾 Hiding save changes button...');
+                    saveChangesButton.style.display = 'none';
+                };
+
+                // Function to show undo button when toolbar is opened
+                window.showUndoButton = function() {
+                    console.log('↶ Showing undo button...');
+                    undoButton.style.display = 'flex';
+                };
+
+                // Function to hide undo button when toolbar is closed
+                window.hideUndoButton = function() {
+                    console.log('↶ Hiding undo button...');
+                    undoButton.style.display = 'none';
+                };
+
+                // Edit counter
+                window.editCount = 0;
+
+                // Function to update save changes button with edit count
+                window.updateSaveChangesButton = function() {
+                    if (window.editCount > 0) {
+                        console.log(`💾 Updating save changes button with ${window.editCount} edits...`);
+                        
+                        // Make buttons visible and enabled
+                        saveChangesButton.style.display = 'flex';
+                        saveChangesButton.disabled = false;
+                        saveChangesButton.style.cursor = 'pointer';
+                        saveChangesButton.style.opacity = '1';
+                        saveChangesButton.style.background = '#059669';
+                        saveChangesButton.innerHTML = `<span>Save Changes (${window.editCount})</span>`;
+                        
+                        // Also make undo button visible and enabled
+                        undoButton.style.display = 'flex';
+                        undoButton.disabled = false;
+                        undoButton.style.cursor = 'pointer';
+                        undoButton.style.opacity = '1';
+                        undoButton.style.background = '#ef4444';
+                    } else {
+                        console.log('💾 Resetting save changes button...');
+                        
+                        // Hide and disable buttons
+                        saveChangesButton.style.display = 'none';
+                        saveChangesButton.disabled = true;
+                        saveChangesButton.style.cursor = 'not-allowed';
+                        saveChangesButton.style.opacity = '0.5';
+                        saveChangesButton.style.background = '#059669';
+                        saveChangesButton.innerHTML = '<span>Save Changes</span>';
+                        
+                        // Also hide and disable undo button
+                        undoButton.style.display = 'none';
+                        undoButton.disabled = true;
+                        undoButton.style.cursor = 'not-allowed';
+                        undoButton.style.opacity = '0.5';
+                        undoButton.style.background = '#ef4444';
+                    }
+                };
+
+                // Function to increment edit count and update button
+                window.incrementEditCount = function() {
+                    console.log('🚀 incrementEditCount called!');
+                    window.editCount++;
+                    console.log(`📝 Edit count incremented to: ${window.editCount}`);
+                    console.log('🔄 About to call updateSaveChangesButton...');
+                    window.updateSaveChangesButton();
+                    console.log('✅ updateSaveChangesButton completed');
+                };
+
+                // Function to reset edit count
+                window.resetEditCount = function() {
+                    window.editCount = 0;
+                    console.log('🔄 Edit count reset to 0');
+                    window.updateSaveChangesButton();
+                };
+
+                // Function to enable save changes button when edits are made (legacy support)
+                window.enableSaveChangesButton = function() {
+                    window.incrementEditCount();
+                };
+
+                // Function to disable save changes button (legacy support)
+                window.disableSaveChangesButton = function() {
+                    window.resetEditCount();
                 };
                 
                 // Show admin button and version controls if authenticated

@@ -1,5 +1,3 @@
-# User projects - exclude all project directories
-projects/
 
 # Python
 __pycache__/

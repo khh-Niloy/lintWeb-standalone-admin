@@ -100,6 +100,26 @@ class AdminToolbar {
                     </div>
                 </div>
                 
+                <!-- Image Upload Section -->
+                <div class="image-upload-section">
+                    <input type="file" id="image-upload-input" accept="image/png,image/jpg,image/jpeg,image/gif,image/svg+xml,image/webp" style="display: none;">
+                    <input type="file" id="image-replace-input" accept="image/png,image/jpg,image/jpeg,image/gif,image/svg+xml,image/webp" style="display: none;">
+                    <button class="toolbar-btn upload-btn" id="btn-upload-image">
+                        📷 Upload Image
+                    </button>
+                    <div class="upload-status" id="upload-status" style="display: none;"></div>
+                </div>
+
+                <!-- Image Actions Section (shown when image is selected) -->
+                <div class="image-actions-section" id="image-actions-section" style="display: none;">
+                    <button class="toolbar-btn replace-btn" id="btn-replace-image">
+                        🔄 Replace Image
+                    </button>
+                    <button class="toolbar-btn delete-btn" id="btn-delete-image">
+                        🗑️ Delete Image
+                    </button>
+                </div>
+
                 <!-- Element Selection -->
                 <div class="toolbar-actions">
                     <button class="toolbar-btn select-btn" id="btn-toggle-select">
@@ -129,6 +149,17 @@ class AdminToolbar {
         this.batchEditCheckbox = document.getElementById('batch-edit-mode');
         this.currentEditMode = 'text'; // Default to text edit mode
         this.hasUnsavedEdits = false;
+
+        // Image upload references
+        this.uploadBtn = document.getElementById('btn-upload-image');
+        this.uploadInput = document.getElementById('image-upload-input');
+        this.uploadStatus = document.getElementById('upload-status');
+
+        // Image actions references
+        this.imageActionsSection = document.getElementById('image-actions-section');
+        this.replaceImageBtn = document.getElementById('btn-replace-image');
+        this.deleteImageBtn = document.getElementById('btn-delete-image');
+        this.replaceImageInput = document.getElementById('image-replace-input');
     }
     
     
@@ -141,7 +172,16 @@ class AdminToolbar {
         this.cancelAiBtn.addEventListener('click', () => this.cancelAiEdit());
         this.submitPromptBtn.addEventListener('click', () => this.submitPrompt());
         this.closeBtn.addEventListener('click', () => this.hide());
-        
+
+        // Image upload events
+        this.uploadBtn.addEventListener('click', () => this.triggerImageUpload());
+        this.uploadInput.addEventListener('change', (e) => this.handleImageUpload(e));
+
+        // Image action events
+        this.replaceImageBtn.addEventListener('click', () => this.triggerImageReplace());
+        this.deleteImageBtn.addEventListener('click', () => this.deleteSelectedImage());
+        this.replaceImageInput.addEventListener('change', (e) => this.handleImageReplace(e));
+
         // Keyboard shortcuts
         this.promptInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -302,7 +342,7 @@ class AdminToolbar {
             this.showStatus('Element already selected', 'error');
             return;
         }
-        
+
         const elementInfo = {
             element: element,
             tag: element.tagName.toLowerCase(),
@@ -311,21 +351,22 @@ class AdminToolbar {
             text: element.textContent?.trim() || '',
             originalText: element.textContent?.trim() || '',
             originalHTML: element.innerHTML, // Store original HTML structure
-            attributes: this.getElementAttributes(element)
+            attributes: this.getElementAttributes(element),
+            isImage: element.tagName.toLowerCase() === 'img'
         };
-        
+
         this.selectedElements.push(elementInfo);
         this.renderSelected();
-        
+
         // Add visual selection indicator
         this.addSelectionBorder(element);
-        
+
         // Position toolbar below the selected element
         this.positionToolbarBelowElement(element);
-        
+
         // Auto-open editing interface for the newly selected element
         this.editElement(this.selectedElements.length - 1);
-        
+
         this.showStatus('Element selected - use toggle to switch edit modes', 'success');
         console.log('✅ Element selected:', elementInfo);
     }
@@ -336,7 +377,171 @@ class AdminToolbar {
         element.style.setProperty('outline', '2px dashed #3b82f6', 'important');
         element.style.setProperty('outline-offset', '2px', 'important');
         element.classList.add('admin-selected-element');
+
+        // Add drag handle bar at the top of the element
+        this.addDragHandle(element);
+
         console.log('✅ Added selection border to element:', element.tagName);
+    }
+
+    addDragHandle(element) {
+        // Remove any existing drag handle
+        const existingHandle = element.querySelector('.admin-drag-handle');
+        if (existingHandle) {
+            existingHandle.remove();
+        }
+
+        // Create drag handle container
+        const dragHandle = document.createElement('div');
+        dragHandle.className = 'admin-drag-handle';
+        dragHandle.innerHTML = `
+            <div class="drag-handle-bar">
+                <span class="drag-icon">⋮⋮</span>
+                <span class="drag-text">Drag to move</span>
+                <button class="save-position-btn" title="Save position">💾</button>
+            </div>
+        `;
+
+        // Insert at the beginning of the element
+        element.style.position = 'relative';
+        element.insertBefore(dragHandle, element.firstChild);
+
+        // Get the save button
+        const saveBtn = dragHandle.querySelector('.save-position-btn');
+
+        // Make element draggable
+        this.makeDraggableWithHandle(element, dragHandle, saveBtn);
+
+        console.log('✅ Added drag handle to element:', element.tagName);
+    }
+
+    makeDraggableWithHandle(element, dragHandle, saveBtn) {
+        let isDragging = false;
+        let startX, startY, initialLeft, initialTop;
+
+        // Store original position for potential restore
+        const originalPosition = {
+            position: element.style.position || window.getComputedStyle(element).position,
+            left: element.style.left,
+            top: element.style.top,
+            transform: element.style.transform
+        };
+
+        // Make element absolutely positioned for dragging
+        const rect = element.getBoundingClientRect();
+        if (element.style.position !== 'absolute' && element.style.position !== 'fixed') {
+            element.style.position = 'absolute';
+            element.style.left = rect.left + window.scrollX + 'px';
+            element.style.top = rect.top + window.scrollY + 'px';
+            element.style.zIndex = '1000';
+        }
+
+        dragHandle.addEventListener('mousedown', (e) => {
+            // Don't drag if clicking the save button
+            if (e.target.closest('.save-position-btn')) {
+                return;
+            }
+
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+
+            const rect = element.getBoundingClientRect();
+            initialLeft = rect.left + window.scrollX;
+            initialTop = rect.top + window.scrollY;
+
+            element.style.cursor = 'grabbing';
+            dragHandle.style.cursor = 'grabbing';
+
+            console.log('🎯 Started dragging element');
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+
+            e.preventDefault();
+
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
+
+            const newLeft = initialLeft + deltaX;
+            const newTop = initialTop + deltaY;
+
+            element.style.left = newLeft + 'px';
+            element.style.top = newTop + 'px';
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                element.style.cursor = 'move';
+                dragHandle.style.cursor = 'grab';
+                console.log('🎯 Stopped dragging element');
+            }
+        });
+
+        // Save position button handler
+        saveBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            await this.saveElementPosition(element);
+        });
+
+        // Set initial cursor
+        dragHandle.style.cursor = 'grab';
+        element.style.cursor = 'move';
+    }
+
+    async saveElementPosition(element) {
+        this.showStatus('Saving element position...', 'loading');
+
+        try {
+            const rect = element.getBoundingClientRect();
+            const computedStyle = window.getComputedStyle(element);
+
+            // Get current position values
+            const position = {
+                position: element.style.position,
+                left: element.style.left,
+                top: element.style.top,
+                zIndex: element.style.zIndex || computedStyle.zIndex
+            };
+
+            // Find the element info in selected elements
+            const elementInfo = this.selectedElements.find(el => el.element === element);
+            if (!elementInfo) {
+                this.showStatus('Element not found in selection', 'error');
+                return;
+            }
+
+            const response = await fetch('/api/save-element-position', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    url: window.location.pathname,
+                    elementSelector: this.generateElementSelector(elementInfo),
+                    position: position,
+                    elementTag: elementInfo.tag,
+                    elementId: elementInfo.id,
+                    elementClasses: elementInfo.classes
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.showStatus('✅ Position saved to HTML file!', 'success');
+
+                // Increment edit counter
+                if (window.incrementEditCount) {
+                    window.incrementEditCount();
+                }
+            } else {
+                this.showStatus(`❌ Failed to save: ${result.error}`, 'error');
+            }
+        } catch (error) {
+            this.showStatus('❌ Network error while saving', 'error');
+            console.error('Save position error:', error);
+        }
     }
     
     removeSelectionBorder(element) {
@@ -344,6 +549,13 @@ class AdminToolbar {
         element.style.removeProperty('outline');
         element.style.removeProperty('outline-offset');
         element.classList.remove('admin-selected-element');
+
+        // Remove drag handle
+        const dragHandle = element.querySelector('.admin-drag-handle');
+        if (dragHandle) {
+            dragHandle.remove();
+        }
+
         console.log('🗑️ Removed selection border from element:', element.tagName);
     }
     
@@ -525,8 +737,17 @@ class AdminToolbar {
         // Show edit mode section if we have elements
         if (this.selectedElements.length > 0) {
             this.editModeSection.style.display = 'block';
+
+            // Show image actions section if the selected element is an image
+            const currentElement = this.selectedElements[this.editingIndex];
+            if (currentElement && currentElement.isImage) {
+                this.imageActionsSection.style.display = 'block';
+            } else {
+                this.imageActionsSection.style.display = 'none';
+            }
         } else {
             this.editModeSection.style.display = 'none';
+            this.imageActionsSection.style.display = 'none';
         }
     }
     
@@ -1107,18 +1328,592 @@ class AdminToolbar {
             statusDisplay.className = 'admin-status-display';
             document.body.appendChild(statusDisplay);
         }
-        
+
         statusDisplay.textContent = message;
         statusDisplay.className = `admin-status-display visible ${type}`;
-        
+
         // Auto-hide after 5 seconds for non-loading states
         if (type !== 'loading') {
             setTimeout(() => {
                 statusDisplay.classList.remove('visible');
             }, 5000);
         }
-        
+
         console.log('📢', message);
+    }
+
+    triggerImageUpload() {
+        this.uploadInput.click();
+    }
+
+    triggerImageReplace() {
+        if (this.editingIndex < 0) {
+            this.showStatus('Please select an image first', 'error');
+            return;
+        }
+
+        const currentElement = this.selectedElements[this.editingIndex];
+        if (!currentElement || !currentElement.isImage) {
+            this.showStatus('Selected element is not an image', 'error');
+            return;
+        }
+
+        this.replaceImageInput.click();
+    }
+
+    async handleImageReplace(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Validate file type
+        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/svg+xml', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            this.showStatus('Invalid file type. Please upload an image (PNG, JPG, GIF, SVG, WebP)', 'error');
+            return;
+        }
+
+        // Validate file size (max 5MB)
+        const maxSize = 5 * 1024 * 1024;
+        if (file.size > maxSize) {
+            this.showStatus('File too large. Maximum size is 5MB', 'error');
+            return;
+        }
+
+        this.showStatus('Replacing image...', 'loading');
+
+        try {
+            // Determine project path from current URL
+            const pathname = window.location.pathname;
+            const parts = pathname.replace(/^\/+|\/+$/g, '').split('/');
+
+            let projectPath;
+            if (parts.length >= 2 && parts[0].startsWith("user_")) {
+                const userDir = parts[0];
+                const projectDir = parts[1].replace('/admin', '').replace('.html', '');
+                projectPath = `/Users/admin/Documents/Projects /lintWeb-standalone-admin/projects/${userDir}/${projectDir}`;
+            } else if (parts.length >= 1 && parts[0]) {
+                const projectDir = parts[0].replace('/admin', '').replace('.html', '');
+                projectPath = `/Users/admin/Documents/Projects /lintWeb-standalone-admin/projects/${projectDir}`;
+            } else {
+                this.showStatus('Cannot determine project path from URL', 'error');
+                return;
+            }
+
+            // Upload the new image
+            const formData = new FormData();
+            formData.append('image', file);
+            formData.append('project_path', projectPath);
+
+            const uploadResponse = await fetch('/api/upload-image', {
+                method: 'POST',
+                body: formData
+            });
+
+            const uploadResult = await uploadResponse.json();
+
+            if (!uploadResult.success) {
+                this.showStatus(`❌ Upload failed: ${uploadResult.error}`, 'error');
+                return;
+            }
+
+            // Get the current element
+            const currentElement = this.selectedElements[this.editingIndex];
+            const imgElement = currentElement.element;
+            const oldSrc = imgElement.getAttribute('src');
+
+            // Replace the image src in the HTML file
+            const response = await fetch('/api/replace-image', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    url: window.location.pathname,
+                    oldImageSrc: oldSrc,
+                    newImageSrc: uploadResult.path,
+                    elementSelector: this.generateElementSelector(currentElement)
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // Update the DOM to show the new image
+                imgElement.src = uploadResult.path;
+
+                // Update stored element info
+                currentElement.attributes.src = uploadResult.path;
+                currentElement.originalHTML = imgElement.outerHTML;
+
+                this.showStatus(`✅ Image replaced successfully!`, 'success');
+
+                // Increment edit counter
+                if (window.incrementEditCount) {
+                    window.incrementEditCount();
+                }
+            } else {
+                this.showStatus(`❌ Failed to replace: ${result.error}`, 'error');
+            }
+        } catch (error) {
+            this.showStatus('❌ Network error during replacement', 'error');
+            console.error('Replace error:', error);
+        } finally {
+            // Reset file input
+            this.replaceImageInput.value = '';
+        }
+    }
+
+    async deleteSelectedImage() {
+        if (this.editingIndex < 0) {
+            this.showStatus('Please select an image first', 'error');
+            return;
+        }
+
+        const currentElement = this.selectedElements[this.editingIndex];
+        if (!currentElement || !currentElement.isImage) {
+            this.showStatus('Selected element is not an image', 'error');
+            return;
+        }
+
+        if (!confirm('Are you sure you want to delete this image from the HTML file?')) {
+            return;
+        }
+
+        this.showStatus('Deleting image...', 'loading');
+
+        try {
+            const imgElement = currentElement.element;
+            const imageSrc = imgElement.getAttribute('src');
+
+            const response = await fetch('/api/delete-image', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    url: window.location.pathname,
+                    imageSrc: imageSrc,
+                    elementSelector: this.generateElementSelector(currentElement)
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // Remove the image from DOM
+                imgElement.remove();
+
+                // Remove from selected elements
+                this.selectedElements.splice(this.editingIndex, 1);
+                this.editingIndex = -1;
+
+                // Update UI
+                this.renderSelected();
+                this.resetToolbarPosition();
+
+                this.showStatus('✅ Image deleted successfully!', 'success');
+
+                // Increment edit counter
+                if (window.incrementEditCount) {
+                    window.incrementEditCount();
+                }
+            } else {
+                this.showStatus(`❌ Failed to delete: ${result.error}`, 'error');
+            }
+        } catch (error) {
+            this.showStatus('❌ Network error during deletion', 'error');
+            console.error('Delete error:', error);
+        }
+    }
+
+    async handleImageUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Validate file type
+        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/svg+xml', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            this.showStatus('Invalid file type. Please upload an image (PNG, JPG, GIF, SVG, WebP)', 'error');
+            return;
+        }
+
+        // Validate file size (max 5MB)
+        const maxSize = 5 * 1024 * 1024;
+        if (file.size > maxSize) {
+            this.showStatus('File too large. Maximum size is 5MB', 'error');
+            return;
+        }
+
+        this.showStatus('Uploading image...', 'loading');
+
+        try {
+            // Determine project path from current URL
+            const pathname = window.location.pathname;
+            const parts = pathname.replace(/^\/+|\/+$/g, '').split('/');
+
+            // Parse URL to get project path (similar to backend logic)
+            let projectPath;
+            if (parts.length >= 2 && parts[0].startsWith("user_")) {
+                // Format: /user_xxx/project_name
+                const userDir = parts[0];
+                const projectDir = parts[1].replace('/admin', '').replace('.html', '');
+                projectPath = `/Users/admin/Documents/Projects /lintWeb-standalone-admin/projects/${userDir}/${projectDir}`;
+            } else if (parts.length >= 1 && parts[0]) {
+                // Format: /project_name
+                const projectDir = parts[0].replace('/admin', '').replace('.html', '');
+                projectPath = `/Users/admin/Documents/Projects /lintWeb-standalone-admin/projects/${projectDir}`;
+            } else {
+                this.showStatus('Cannot determine project path from URL', 'error');
+                return;
+            }
+
+            // Create FormData for file upload
+            const formData = new FormData();
+            formData.append('image', file);
+            formData.append('project_path', projectPath);
+
+            const response = await fetch('/api/upload-image', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.showStatus(`✅ Image uploaded: ${result.filename}`, 'success');
+
+                // Insert image into the page
+                this.insertImageIntoPage(result.path, result.filename);
+
+                // Increment edit counter
+                if (window.incrementEditCount) {
+                    window.incrementEditCount();
+                }
+            } else {
+                this.showStatus(`❌ Upload failed: ${result.error}`, 'error');
+            }
+        } catch (error) {
+            this.showStatus('❌ Network error during upload', 'error');
+            console.error('Upload error:', error);
+        } finally {
+            // Reset file input
+            this.uploadInput.value = '';
+        }
+    }
+
+    copyToClipboard(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                console.log('✅ Copied to clipboard:', text);
+            }).catch(err => {
+                console.error('Failed to copy to clipboard:', err);
+                this.fallbackCopyToClipboard(text);
+            });
+        } else {
+            this.fallbackCopyToClipboard(text);
+        }
+    }
+
+    fallbackCopyToClipboard(text) {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            console.log('✅ Copied to clipboard (fallback):', text);
+        } catch (err) {
+            console.error('Fallback copy failed:', err);
+        }
+        document.body.removeChild(textArea);
+    }
+
+    insertImageIntoPage(imagePath, filename) {
+        // Create image wrapper with draggable and resizable capabilities
+        const imageWrapper = document.createElement('div');
+        imageWrapper.className = 'admin-uploaded-image-wrapper';
+        imageWrapper.style.position = 'absolute';
+        imageWrapper.style.left = '50%';
+        imageWrapper.style.top = '200px';
+        imageWrapper.style.transform = 'translateX(-50%)';
+        imageWrapper.style.zIndex = '1000';
+        imageWrapper.style.cursor = 'move';
+
+        // Create the image element
+        const img = document.createElement('img');
+        img.src = imagePath;
+        img.alt = filename;
+        img.className = 'admin-uploaded-image';
+        img.style.width = '300px';
+        img.style.height = 'auto';
+        img.style.display = 'block';
+        img.style.maxWidth = '100%';
+
+        // Create resize handles
+        const resizeHandle = document.createElement('div');
+        resizeHandle.className = 'admin-image-resize-handle';
+        resizeHandle.innerHTML = '⇲';
+        resizeHandle.style.position = 'absolute';
+        resizeHandle.style.bottom = '0';
+        resizeHandle.style.right = '0';
+        resizeHandle.style.width = '20px';
+        resizeHandle.style.height = '20px';
+        resizeHandle.style.cursor = 'nwse-resize';
+        resizeHandle.style.background = '#3b82f6';
+        resizeHandle.style.color = 'white';
+        resizeHandle.style.borderRadius = '0 0 4px 0';
+        resizeHandle.style.display = 'flex';
+        resizeHandle.style.alignItems = 'center';
+        resizeHandle.style.justifyContent = 'center';
+        resizeHandle.style.fontSize = '14px';
+
+        // Create save button
+        const saveBtn = document.createElement('button');
+        saveBtn.className = 'admin-image-save-btn';
+        saveBtn.innerHTML = '💾';
+        saveBtn.title = 'Save image to HTML';
+        saveBtn.style.position = 'absolute';
+        saveBtn.style.top = '-10px';
+        saveBtn.style.left = '-10px';
+        saveBtn.style.width = '24px';
+        saveBtn.style.height = '24px';
+        saveBtn.style.background = '#22c55e';
+        saveBtn.style.color = 'white';
+        saveBtn.style.border = 'none';
+        saveBtn.style.borderRadius = '50%';
+        saveBtn.style.cursor = 'pointer';
+        saveBtn.style.fontSize = '12px';
+        saveBtn.style.display = 'flex';
+        saveBtn.style.alignItems = 'center';
+        saveBtn.style.justifyContent = 'center';
+        saveBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+
+        // Create delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'admin-image-delete-btn';
+        deleteBtn.innerHTML = '✖';
+        deleteBtn.title = 'Remove image';
+        deleteBtn.style.position = 'absolute';
+        deleteBtn.style.top = '-10px';
+        deleteBtn.style.right = '-10px';
+        deleteBtn.style.width = '24px';
+        deleteBtn.style.height = '24px';
+        deleteBtn.style.background = '#ef4444';
+        deleteBtn.style.color = 'white';
+        deleteBtn.style.border = 'none';
+        deleteBtn.style.borderRadius = '50%';
+        deleteBtn.style.cursor = 'pointer';
+        deleteBtn.style.fontSize = '12px';
+        saveBtn.style.display = 'flex';
+        deleteBtn.style.alignItems = 'center';
+        deleteBtn.style.justifyContent = 'center';
+        deleteBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+
+        // Add selection border
+        imageWrapper.style.border = '2px dashed #3b82f6';
+        imageWrapper.style.padding = '4px';
+        imageWrapper.style.background = 'rgba(59, 130, 246, 0.05)';
+
+        // Append elements
+        imageWrapper.appendChild(img);
+        imageWrapper.appendChild(resizeHandle);
+        imageWrapper.appendChild(saveBtn);
+        imageWrapper.appendChild(deleteBtn);
+        document.body.appendChild(imageWrapper);
+
+        // Store original data
+        imageWrapper.dataset.imagePath = imagePath;
+        imageWrapper.dataset.filename = filename;
+
+        // Make draggable
+        this.makeDraggable(imageWrapper);
+
+        // Make resizable
+        this.makeResizable(imageWrapper, img, resizeHandle);
+
+        // Save functionality
+        saveBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.saveImageToHTML(imageWrapper, img, imagePath);
+        });
+
+        // Delete functionality
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm('Remove this image from the page?')) {
+                imageWrapper.remove();
+                this.showStatus('Image removed from page', 'info');
+            }
+        });
+
+        this.showStatus('✅ Image inserted! Drag to reposition, resize from corner', 'success');
+        console.log('✅ Image inserted into page:', imagePath);
+    }
+
+    makeDraggable(element) {
+        let isDragging = false;
+        let currentX;
+        let currentY;
+        let initialX;
+        let initialY;
+        let xOffset = 0;
+        let yOffset = 0;
+
+        element.addEventListener('mousedown', (e) => {
+            // Don't drag if clicking on resize handle or delete button
+            if (e.target.classList.contains('admin-image-resize-handle') ||
+                e.target.classList.contains('admin-image-delete-btn')) {
+                return;
+            }
+
+            initialX = e.clientX - xOffset;
+            initialY = e.clientY - yOffset;
+
+            if (e.target === element || e.target.classList.contains('admin-uploaded-image')) {
+                isDragging = true;
+                element.style.cursor = 'grabbing';
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                e.preventDefault();
+                currentX = e.clientX - initialX;
+                currentY = e.clientY - initialY;
+
+                xOffset = currentX;
+                yOffset = currentY;
+
+                element.style.transform = `translate(${currentX}px, ${currentY}px)`;
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                element.style.cursor = 'move';
+            }
+        });
+    }
+
+    makeResizable(wrapper, img, handle) {
+        let isResizing = false;
+        let originalWidth = 0;
+        let originalHeight = 0;
+        let originalX = 0;
+        let originalY = 0;
+        let originalMouseX = 0;
+        let originalMouseY = 0;
+
+        handle.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            isResizing = true;
+
+            const rect = img.getBoundingClientRect();
+            originalWidth = rect.width;
+            originalHeight = rect.height;
+            originalX = rect.left;
+            originalY = rect.top;
+            originalMouseX = e.clientX;
+            originalMouseY = e.clientY;
+
+            document.body.style.cursor = 'nwse-resize';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isResizing) {
+                e.preventDefault();
+                const deltaX = e.clientX - originalMouseX;
+                const deltaY = e.clientY - originalMouseY;
+
+                // Use the larger delta to maintain aspect ratio
+                const delta = Math.max(deltaX, deltaY);
+                const newWidth = originalWidth + delta;
+
+                if (newWidth > 50) { // Minimum width
+                    img.style.width = newWidth + 'px';
+                }
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                document.body.style.cursor = '';
+            }
+        });
+    }
+
+    async saveImageToHTML(wrapper, img, imagePath) {
+        this.showStatus('Saving image to HTML...', 'loading');
+
+        try {
+            // Get the computed position and size
+            const wrapperRect = wrapper.getBoundingClientRect();
+            const imgRect = img.getBoundingClientRect();
+
+            // Extract transform values
+            const transform = window.getComputedStyle(wrapper).transform;
+            let translateX = 0;
+            let translateY = 0;
+
+            if (transform && transform !== 'none') {
+                const matrix = transform.match(/matrix\((.+)\)/);
+                if (matrix) {
+                    const values = matrix[1].split(', ');
+                    translateX = parseFloat(values[4]) || 0;
+                    translateY = parseFloat(values[5]) || 0;
+                }
+            }
+
+            // Calculate actual position (accounting for initial positioning)
+            const actualLeft = wrapperRect.left + window.scrollX;
+            const actualTop = wrapperRect.top + window.scrollY;
+
+            // Get image width
+            const imageWidth = img.style.width || '300px';
+
+            // Create clean HTML for the image
+            const imageHTML = `<img src="${imagePath}" alt="${wrapper.dataset.filename}" style="position: absolute; left: ${actualLeft}px; top: ${actualTop}px; width: ${imageWidth}; z-index: 100;">`;
+
+            // Determine target element (body or a container)
+            let targetSelector = 'body';
+            let insertionMethod = 'append'; // append to end of body
+
+            const response = await fetch('/api/save-image-to-html', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    url: window.location.pathname,
+                    imageHTML: imageHTML,
+                    targetSelector: targetSelector,
+                    insertionMethod: insertionMethod
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.showStatus('✅ Image saved to HTML file!', 'success');
+
+                // Remove the temporary wrapper and replace with permanent image
+                wrapper.remove();
+
+                // Increment edit counter
+                if (window.incrementEditCount) {
+                    window.incrementEditCount();
+                }
+
+                // Show message about needing to commit
+                setTimeout(() => {
+                    this.showStatus('Use "Save Changes" button to commit to git', 'info');
+                }, 2000);
+            } else {
+                this.showStatus(`❌ Failed to save: ${result.error}`, 'error');
+            }
+        } catch (error) {
+            this.showStatus('❌ Network error while saving', 'error');
+            console.error('Save image error:', error);
+        }
     }
     
     
@@ -1458,22 +2253,125 @@ class AdminToolbar {
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             }
             
+            /* Image Upload Section */
+            .image-upload-section {
+                border-bottom: 1px solid #f1f5f9;
+                padding-bottom: 12px;
+            }
+
+            .upload-btn {
+                width: 100%;
+                background: #8b5cf6;
+                border: none;
+                border-radius: 10px;
+                padding: 12px 18px;
+                color: white;
+                font-size: 13px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+            }
+
+            .upload-btn:hover {
+                background: #7c3aed;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+            }
+
+            /* Image Actions Section */
+            .image-actions-section {
+                border-bottom: 1px solid #f1f5f9;
+                padding-bottom: 12px;
+                display: flex;
+                gap: 8px;
+            }
+
+            .replace-btn {
+                flex: 1;
+                background: #3b82f6;
+                border: none;
+                border-radius: 10px;
+                padding: 12px 18px;
+                color: white;
+                font-size: 13px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+            }
+
+            .replace-btn:hover {
+                background: #2563eb;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            }
+
+            .delete-btn {
+                flex: 1;
+                background: #ef4444;
+                border: none;
+                border-radius: 10px;
+                padding: 12px 18px;
+                color: white;
+                font-size: 13px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+            }
+
+            .delete-btn:hover {
+                background: #dc2626;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+            }
+
+            .upload-status {
+                margin-top: 8px;
+                padding: 8px 12px;
+                border-radius: 6px;
+                font-size: 12px;
+                text-align: center;
+            }
+
+            .upload-status.success {
+                background: #f0fdf4;
+                color: #166534;
+                border: 1px solid #bbf7d0;
+            }
+
+            .upload-status.error {
+                background: #fef2f2;
+                color: #dc2626;
+                border: 1px solid #fecaca;
+            }
+
             /* Element Selection Styles */
             body.admin-selecting {
                 cursor: crosshair !important;
             }
-            
+
             body.admin-selecting * {
                 cursor: crosshair !important;
             }
-            
+
             body.admin-selecting *:hover {
                 background-color: rgba(59, 130, 246, 0.1) !important;
                 outline: 2px solid #3b82f6 !important;
                 outline-offset: -2px !important;
                 cursor: crosshair !important;
             }
-            
+
             /* Prevent selection on toolbar elements */
             body.admin-selecting #admin-toolbar,
             body.admin-selecting #admin-toolbar *,
@@ -1683,6 +2581,99 @@ class AdminToolbar {
             .admin-selected-element {
                 outline: 2px dashed #3b82f6 !important;
                 outline-offset: 2px !important;
+            }
+
+            /* Drag Handle Styles */
+            .admin-drag-handle {
+                position: absolute;
+                top: -32px;
+                left: 50%;
+                transform: translateX(-50%);
+                z-index: 100000;
+                pointer-events: auto;
+            }
+
+            .drag-handle-bar {
+                background: #3b82f6;
+                color: white;
+                padding: 6px 12px;
+                border-radius: 6px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+                cursor: grab;
+                user-select: none;
+                font-size: 12px;
+                font-weight: 600;
+                white-space: nowrap;
+            }
+
+            .drag-handle-bar:active {
+                cursor: grabbing;
+            }
+
+            .drag-icon {
+                font-size: 14px;
+                font-weight: bold;
+                line-height: 1;
+            }
+
+            .drag-text {
+                font-size: 11px;
+                opacity: 0.9;
+            }
+
+            .save-position-btn {
+                background: white;
+                color: #3b82f6;
+                border: none;
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 12px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .save-position-btn:hover {
+                background: #f0f9ff;
+                transform: scale(1.05);
+            }
+
+            .save-position-btn:active {
+                transform: scale(0.95);
+            }
+
+            /* Uploaded Image Wrapper */
+            .admin-uploaded-image-wrapper {
+                transition: box-shadow 0.2s ease;
+            }
+
+            .admin-uploaded-image-wrapper:hover {
+                box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+            }
+
+            .admin-uploaded-image {
+                pointer-events: none;
+                user-select: none;
+            }
+
+            .admin-image-resize-handle:hover {
+                background: #2563eb !important;
+                transform: scale(1.1);
+            }
+
+            .admin-image-delete-btn:hover {
+                background: #dc2626 !important;
+                transform: scale(1.1);
+            }
+
+            .admin-image-save-btn:hover {
+                background: #16a34a !important;
+                transform: scale(1.1);
             }
             
             /* Edit Button */

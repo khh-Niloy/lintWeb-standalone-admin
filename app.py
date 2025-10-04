@@ -1634,10 +1634,21 @@ def save_ai_changes():
 
 @app.route("/admin-static/<path:filename>")
 def admin_static(filename):
+    # First try the toolbar directory
     admin_static_dir = BASE_DIR / "admin" / "toolbar"
-    if not admin_static_dir.exists():
-        return "Admin static directory not found", 404
-    return send_from_directory(str(admin_static_dir), filename)
+    if admin_static_dir.exists():
+        file_path = admin_static_dir / filename
+        if file_path.exists():
+            return send_from_directory(str(admin_static_dir), filename)
+    
+    # Then try the components directory
+    admin_components_dir = BASE_DIR / "admin" / "components"
+    if admin_components_dir.exists():
+        file_path = admin_components_dir / filename
+        if file_path.exists():
+            return send_from_directory(str(admin_components_dir), filename)
+    
+    return "Admin static file not found", 404
 
 
 

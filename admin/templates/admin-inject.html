@@ -446,33 +446,7 @@ const loadAdminToolbar = () => {
                     }
                 }
                 
-                // Create logout button
-                const logoutButton = document.createElement('div');
-                logoutButton.id = 'admin-logout-button';
-                logoutButton.innerHTML = `
-                    <span>Logout</span>
-                `;
-                logoutButton.style.cssText = `
-                    position: fixed;
-                    bottom: 22px;
-                    right: 245px;
-                    z-index: 99999;
-                    align-items: center;
-                    background: red;
-                    color: white;
-                    padding: 10px 24px;
-                    border-radius: 12px;
-                    font-weight: 600;
-                    box-shadow: 
-                        0 8px 24px rgba(0, 0, 0, 0.08),
-                        0 2px 8px rgba(0, 0, 0, 0.04);
-                    backdrop-filter: blur(8px);
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-                    font-size: 14px;
-                    cursor: pointer;
-                    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-                    display: ${window.isAuthenticated ? 'flex' : 'none'};
-                `;
+                // Logout button will be created in the dock by toolbar.js
 
                 // Create save changes button
                 const saveChangesButton = document.createElement('div');
@@ -534,63 +508,9 @@ const loadAdminToolbar = () => {
                 `;
                 undoButton.disabled = true;
 
-                // Create admin toolbar button beside the LintAI watermark
-                const adminButton = document.createElement('div');
-                adminButton.id = 'admin-toolbar-button';
-                adminButton.innerHTML = `
-                    <span>Edit</span>
-                `;
-                adminButton.style.cssText = `
-                    position: fixed;
-                    bottom: 21px;
-                    right: 29px;
-                    z-index: 99999;
-                    align-items: center;
-                    background: white;
-                    color: black;
-                    padding: 10px 24px;
-                    border-radius: 12px;
-                    font-weight: 600;
-                    border: 1px solid #1a1a1a;
-                    box-shadow:
-                        0 8px 24px rgba(0, 0, 0, 0.25),
-                        0 2px 8px rgba(0, 0, 0, 0.15);
-                    backdrop-filter: blur(8px);
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-                    font-size: 14px;
-                    cursor: pointer;
-                    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-                    display: ${window.isAuthenticated ? 'flex' : 'none'};
-                `;
+                // Edit button is now handled by the dock
 
-                // Create upload image button next to Edit button
-                const uploadImageButton = document.createElement('div');
-                uploadImageButton.id = 'admin-upload-image-button';
-                uploadImageButton.innerHTML = `
-                    <span>📷 Upload</span>
-                `;
-                uploadImageButton.style.cssText = `
-                    position: fixed;
-                    bottom: 21px;
-                    right: 117px;
-                    z-index: 99999;
-                    align-items: center;
-                    background: #8b5cf6;
-                    color: white;
-                    padding: 10px 24px;
-                    border-radius: 12px;
-                    font-weight: 600;
-                    border: 1px solid #7c3aed;
-                    box-shadow:
-                        0 8px 24px rgba(139, 92, 246, 0.25),
-                        0 2px 8px rgba(139, 92, 246, 0.15);
-                    backdrop-filter: blur(8px);
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-                    font-size: 14px;
-                    cursor: pointer;
-                    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-                    display: ${window.isAuthenticated ? 'flex' : 'none'};
-                `;
+                // Upload button is now handled by the dock
 
                 // Create hidden file input for upload image button
                 const uploadImageInput = document.createElement('input');
@@ -658,27 +578,7 @@ const loadAdminToolbar = () => {
                 versionDropdown.appendChild(rollbackButton);
                 
                 
-                // Add hover effect for logout button
-                logoutButton.addEventListener('mouseenter', () => {
-                    logoutButton.style.background = '#000000';
-                    logoutButton.style.color = '#ffffff';
-                    logoutButton.style.borderColor = '#ffffff';
-                    logoutButton.style.transform = 'translateY(-2px)';
-                    logoutButton.style.boxShadow = '0 12px 32px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.15)';
-                });
-                logoutButton.addEventListener('mouseleave', () => {
-                    logoutButton.style.background = 'red';
-                    logoutButton.style.color = 'white';
-                    logoutButton.style.borderColor = '#e2e8f0';
-                    logoutButton.style.transform = 'translateY(0px)';
-                    logoutButton.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04)';
-                });
-
-                // Add click handler for logout button
-                logoutButton.addEventListener('click', () => {
-                    console.log('🚪 Logout button clicked!');
-                    logoutAdmin();
-                });
+                // Logout button event handlers will be added by the dock
 
                 // Add hover effects for save changes button
                 saveChangesButton.addEventListener('mouseenter', () => {
@@ -822,52 +722,9 @@ const loadAdminToolbar = () => {
                     }
                 });
 
-                // Add hover effect for edit button
-                adminButton.addEventListener('mouseenter', () => {
-                    adminButton.style.background = '#1a1a1a';
-                    adminButton.style.transform = 'translateY(-2px)';
-                    adminButton.style.boxShadow = '0 12px 32px rgba(0, 0, 0, 0.35), 0 4px 12px rgba(0, 0, 0, 0.25)';
-                });
-                adminButton.addEventListener('mouseleave', () => {
-                    adminButton.style.background = 'white';
-                    adminButton.style.transform = 'translateY(0px)';
-                    adminButton.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.25), 0 2px 8px rgba(0, 0, 0, 0.15)';
-                });
+                // Edit button event handlers are now handled by the dock
 
-                // Add click handler to edit button - show toolbar and start selecting
-                adminButton.addEventListener('click', () => {
-                    console.log('🔧 Admin button clicked!');
-
-                    if (window.adminToolbar) {
-                        // Show toolbar if hidden
-                        if (!window.adminToolbar.isVisible) {
-                            window.adminToolbar.show();
-                        }
-
-                        // Start element selection automatically
-                        if (!window.adminToolbar.isSelecting) {
-                            window.adminToolbar.enterSelectMode();
-                        }
-                    }
-                });
-
-                // Add hover effect for upload image button
-                uploadImageButton.addEventListener('mouseenter', () => {
-                    uploadImageButton.style.background = '#7c3aed';
-                    uploadImageButton.style.transform = 'translateY(-2px)';
-                    uploadImageButton.style.boxShadow = '0 12px 32px rgba(124, 58, 237, 0.35), 0 4px 12px rgba(124, 58, 237, 0.25)';
-                });
-                uploadImageButton.addEventListener('mouseleave', () => {
-                    uploadImageButton.style.background = '#8b5cf6';
-                    uploadImageButton.style.transform = 'translateY(0px)';
-                    uploadImageButton.style.boxShadow = '0 8px 24px rgba(139, 92, 246, 0.25), 0 2px 8px rgba(139, 92, 246, 0.15)';
-                });
-
-                // Add click handler for upload image button
-                uploadImageButton.addEventListener('click', () => {
-                    console.log('📷 Upload image button clicked!');
-                    uploadImageInput.click();
-                });
+                // Upload button event handlers are now handled by the dock
 
                 // Handle image upload from top-level button
                 uploadImageInput.addEventListener('change', async (e) => {
@@ -930,11 +787,11 @@ const loadAdminToolbar = () => {
                 
                 
                 console.log('➕ Adding admin buttons to page...');
-                document.body.appendChild(logoutButton);
+                // logoutButton is now handled by the dock
                 document.body.appendChild(saveChangesButton);
                 document.body.appendChild(undoButton);
-                document.body.appendChild(adminButton);
-                document.body.appendChild(uploadImageButton);
+                // adminButton is now handled by the dock
+                // uploadImageButton is now handled by the dock
                 document.body.appendChild(uploadImageInput);
                 document.body.appendChild(versionDropdown);
                 console.log('✅ Admin buttons and version controls added successfully');

@@ -34,14 +34,7 @@ class AdminToolbar {
     
     // Add floating dock content with all admin buttons
     this.topDiv.innerHTML = `
-      <button id="btn-toggle-select" data-tooltip="Start Selecting">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
-          <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
-          <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
-          <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
-        </svg>
-      </button>
+     
       
       <button id="btn-upload-image" data-tooltip="Upload Image">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -118,6 +111,21 @@ class AdminToolbar {
         </svg>
       </button>
       
+      <button id="admin-save-changes-button" data-tooltip="Save Changes" style="background: #22c55e; display: none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+          <polyline points="9,9 9,9 9,9"/>
+          <path d="M15 3v6h6"/>
+        </svg>
+      </button>
+      
+      <button id="admin-undo-button" data-tooltip="Undo" style="background: #f59e0b; display: none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 7v6h6"/>
+          <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>
+        </svg>
+      </button>
+      
       <input type="file" id="image-upload-input" accept="image/*" style="display: none;">
       <input type="file" id="image-replace-input" accept="image/*" style="display: none;">
     `;
@@ -161,6 +169,111 @@ class AdminToolbar {
           }
         });
         console.log("✅ Added edit functionality to dock button");
+      }
+      
+      // Save Changes button functionality - same as original
+      const saveChangesBtn = this.topDiv.querySelector('#admin-save-changes-button');
+      if (saveChangesBtn) {
+        saveChangesBtn.addEventListener('click', async () => {
+          if (saveChangesBtn.disabled) return;
+          
+          console.log('💾 Save changes button clicked from dock!');
+          saveChangesBtn.disabled = true;
+          saveChangesBtn.style.cursor = 'not-allowed';
+          saveChangesBtn.style.opacity = '0.5';
+          saveChangesBtn.innerHTML = 'Publishing...';
+          
+          // Also disable undo button during publish
+          const undoBtn = this.topDiv.querySelector('#admin-undo-button');
+          if (undoBtn) {
+            undoBtn.disabled = true;
+            undoBtn.style.cursor = 'not-allowed';
+            undoBtn.style.opacity = '0.5';
+          }
+          
+          try {
+            const response = await fetch('/api/publish', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' }
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+              saveChangesBtn.innerHTML = '✅ Published!';
+              if (undoBtn) undoBtn.innerHTML = '✅ Published!';
+              setTimeout(() => {
+                saveChangesBtn.style.display = 'none';
+                if (undoBtn) undoBtn.style.display = 'none';
+                if (window.resetEditCount) window.resetEditCount();
+              }, 2000);
+            } else {
+              saveChangesBtn.innerHTML = '❌ Failed';
+              setTimeout(() => {
+                saveChangesBtn.innerHTML = 'Save Changes';
+                saveChangesBtn.disabled = false;
+                saveChangesBtn.style.cursor = 'pointer';
+                saveChangesBtn.style.opacity = '1';
+              }, 2000);
+            }
+          } catch (error) {
+            console.error('Save error:', error);
+            saveChangesBtn.innerHTML = '❌ Error';
+            setTimeout(() => {
+              saveChangesBtn.innerHTML = 'Save Changes';
+              saveChangesBtn.disabled = false;
+              saveChangesBtn.style.cursor = 'pointer';
+              saveChangesBtn.style.opacity = '1';
+            }, 2000);
+          }
+        });
+        console.log("✅ Added save changes functionality to dock button");
+      }
+      
+      // Undo button functionality - same as original
+      const undoBtn = this.topDiv.querySelector('#admin-undo-button');
+      if (undoBtn) {
+        undoBtn.addEventListener('click', async () => {
+          if (undoBtn.disabled) return;
+          
+          console.log('↶ Undo button clicked from dock!');
+          
+          // Confirm with user
+          if (!confirm(`Are you sure you want to undo all ${window.editCount || 0} unsaved changes? This cannot be undone.`)) {
+            return;
+          }
+          
+          undoBtn.disabled = true;
+          undoBtn.style.cursor = 'not-allowed';
+          undoBtn.style.opacity = '0.5';
+          
+          try {
+            const response = await fetch('/api/undo', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' }
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+              if (window.resetEditCount) window.resetEditCount();
+              undoBtn.style.display = 'none';
+              const saveBtn = this.topDiv.querySelector('#admin-save-changes-button');
+              if (saveBtn) saveBtn.style.display = 'none';
+              location.reload(); // Reload page to show undone changes
+            } else {
+              undoBtn.disabled = false;
+              undoBtn.style.cursor = 'pointer';
+              undoBtn.style.opacity = '1';
+            }
+          } catch (error) {
+            console.error('Undo error:', error);
+            undoBtn.disabled = false;
+            undoBtn.style.cursor = 'pointer';
+            undoBtn.style.opacity = '1';
+          }
+        });
+        console.log("✅ Added undo functionality to dock button");
       }
       
     }, 100);
@@ -242,12 +355,6 @@ class AdminToolbar {
       <div class="toolbar-popup-content">
         <button class="close-btn" id="close-btn">✕</button>
         
-        <div class="image-upload-section">
-          <button class="upload-btn" id="btn-upload-image">📷 Upload Image</button>
-          <input type="file" id="image-upload-input" accept="image/*" style="display: none;">
-          <div class="upload-status" id="upload-status"></div>
-        </div>
-
         <div class="image-actions-section" id="image-actions-section" style="display: none;">
           <button class="replace-btn" id="btn-replace-image">🔄 Replace</button>
           <button class="delete-btn" id="btn-delete-image">🗑️ Delete</button>
@@ -307,6 +414,14 @@ class AdminToolbar {
     this.aiModeBtn = document.getElementById("ai-mode-btn");
     this.saveTextBtn = document.getElementById("save-text-btn");
     this.cancelTextBtn = document.getElementById("cancel-text-btn");
+    
+    console.log('🔍 Button elements found:', {
+      saveTextBtn: !!this.saveTextBtn,
+      cancelTextBtn: !!this.cancelTextBtn,
+      textModeBtn: !!this.textModeBtn,
+      aiModeBtn: !!this.aiModeBtn,
+      selectBtn: !!this.selectBtn
+    });
     this.cancelAiBtn = document.getElementById("cancel-ai-btn");
     this.submitPromptBtn = document.getElementById("submit-prompt");
     this.closeBtn = document.getElementById("close-btn");
@@ -315,10 +430,10 @@ class AdminToolbar {
     this.currentEditMode = "text"; // Default to text edit mode
     this.hasUnsavedEdits = false;
 
-    // Image upload references
-    this.uploadBtn = document.getElementById("btn-upload-image");
-    this.uploadInput = document.getElementById("image-upload-input");
-    this.uploadStatus = document.getElementById("upload-status");
+    // Image upload references - handled by dock now
+    this.uploadBtn = null; // Upload functionality moved to dock
+    this.uploadInput = null;
+    this.uploadStatus = null;
 
     // Image actions references
     this.imageActionsSection = document.getElementById("image-actions-section");
@@ -328,31 +443,60 @@ class AdminToolbar {
   }
 
   attachEvents() {
-    this.selectBtn.addEventListener("click", () => this.startEditing());
-    this.textModeBtn.addEventListener("click", () => this.setEditMode("text"));
-    this.aiModeBtn.addEventListener("click", () => this.setEditMode("ai"));
-    this.saveTextBtn.addEventListener("click", () => this.saveTextToFile());
-    this.cancelTextBtn.addEventListener("click", () => this.cancelTextEdit());
+    this.selectBtn.addEventListener("click", () => {
+      console.log('🔍 Start Selecting button clicked, current isSelecting:', this.isSelecting);
+      this.startEditing();
+    });
+    this.textModeBtn.addEventListener("click", () => {
+      console.log('🔍 Text mode button clicked');
+      this.setEditMode("text");
+    });
+    this.aiModeBtn.addEventListener("click", () => {
+      console.log('🔍 AI mode button clicked');
+      this.setEditMode("ai");
+    });
+    this.saveTextBtn.addEventListener("click", () => {
+      console.log('🔍 Save button event listener triggered');
+      this.saveTextToFile();
+    });
+    this.cancelTextBtn.addEventListener("click", () => {
+      console.log('🔍 Cancel button event listener triggered');
+      this.cancelTextEdit();
+    });
     this.cancelAiBtn.addEventListener("click", () => this.cancelAiEdit());
     this.submitPromptBtn.addEventListener("click", () => this.submitPrompt());
     this.closeBtn.addEventListener("click", () => this.hide());
 
-    // Image upload events
-    this.uploadBtn.addEventListener("click", () => this.triggerImageUpload());
-    this.uploadInput.addEventListener("change", (e) =>
-      this.handleImageUpload(e)
-    );
+    // Image upload events - add defensive checks
+    if (this.uploadBtn) {
+      this.uploadBtn.addEventListener("click", () => this.triggerImageUpload());
+    } else {
+      console.log('⚠️ Upload button not found in toolbar');
+    }
+    if (this.uploadInput) {
+      this.uploadInput.addEventListener("change", (e) =>
+        this.handleImageUpload(e)
+      );
+    } else {
+      console.log('⚠️ Upload input not found in toolbar');
+    }
 
     // Image action events
-    this.replaceImageBtn.addEventListener("click", () =>
-      this.triggerImageReplace()
-    );
-    this.deleteImageBtn.addEventListener("click", () =>
-      this.deleteSelectedImage()
-    );
-    this.replaceImageInput.addEventListener("change", (e) =>
-      this.handleImageReplace(e)
-    );
+    if (this.replaceImageBtn) {
+      this.replaceImageBtn.addEventListener("click", () =>
+        this.triggerImageReplace()
+      );
+    }
+    if (this.deleteImageBtn) {
+      this.deleteImageBtn.addEventListener("click", () =>
+        this.deleteSelectedImage()
+      );
+    }
+    if (this.replaceImageInput) {
+      this.replaceImageInput.addEventListener("change", (e) =>
+        this.handleImageReplace(e)
+      );
+    }
 
     // Keyboard shortcuts
     this.promptInput.addEventListener("keydown", (e) => {
@@ -434,6 +578,7 @@ class AdminToolbar {
   }
 
   setEditMode(mode) {
+    console.log('🔧 Setting edit mode to:', mode, 'from:', this.currentEditMode);
     this.currentEditMode = mode;
 
     // Update toggle button states
@@ -572,17 +717,40 @@ class AdminToolbar {
     // Create drag handle container
     const dragHandle = document.createElement("div");
     dragHandle.className = "admin-drag-handle";
+    dragHandle.contentEditable = false; // Make drag handle non-editable
     dragHandle.innerHTML = `
-            <div class="drag-handle-bar">
+            <div class="drag-handle-bar" style="pointer-events: auto; user-select: none;">
                 <span class="drag-icon">⋮⋮</span>
                 <span class="drag-text">Drag to move</span>
-                <button class="save-position-btn" title="Save position">💾</button>
+                <button class="save-position-btn" title="Save position">Save</button>
             </div>
         `;
 
-    // Insert at the beginning of the element
+    // Position drag handle as overlay, completely outside content flow
     element.style.position = "relative";
-    element.insertBefore(dragHandle, element.firstChild);
+    dragHandle.style.position = "absolute";
+    dragHandle.style.top = "-40px"; // Move further up to avoid content
+    dragHandle.style.left = "50%";
+    dragHandle.style.transform = "translateX(-50%)";
+    dragHandle.style.zIndex = "10000";
+    dragHandle.style.pointerEvents = "none"; // Prevent interference with text editing
+    
+    // Allow pointer events only on the drag handle bar for dragging
+    const dragHandleBar = dragHandle.querySelector('.drag-handle-bar');
+    if (dragHandleBar) {
+      dragHandleBar.style.pointerEvents = "auto";
+    }
+    
+    // Create a wrapper to isolate drag handle from element content
+    const wrapper = document.createElement("div");
+    wrapper.style.position = "relative";
+    wrapper.style.display = "inline-block";
+    wrapper.style.width = "100%";
+    
+    // Insert wrapper around element, then add drag handle to wrapper
+    element.parentNode.insertBefore(wrapper, element);
+    wrapper.appendChild(element);
+    wrapper.appendChild(dragHandle);
 
     // Get the save button
     const saveBtn = dragHandle.querySelector(".save-position-btn");
@@ -606,17 +774,8 @@ class AdminToolbar {
       transform: element.style.transform,
     };
 
-    // Make element absolutely positioned for dragging
-    const rect = element.getBoundingClientRect();
-    if (
-      element.style.position !== "absolute" &&
-      element.style.position !== "fixed"
-    ) {
-      element.style.position = "absolute";
-      element.style.left = rect.left + window.scrollX + "px";
-      element.style.top = rect.top + window.scrollY + "px";
-      element.style.zIndex = "1000";
-    }
+    // DON'T make element absolute positioned yet - wait for actual drag start
+    let hasStartedDragging = false;
 
     dragHandle.addEventListener("mousedown", (e) => {
       // Don't drag if clicking the save button
@@ -628,20 +787,34 @@ class AdminToolbar {
       startX = e.clientX;
       startY = e.clientY;
 
-      const rect = element.getBoundingClientRect();
-      initialLeft = rect.left + window.scrollX;
-      initialTop = rect.top + window.scrollY;
-
       element.style.cursor = "grabbing";
       dragHandle.style.cursor = "grabbing";
 
-      console.log("🎯 Started dragging element");
+      console.log("🎯 Mouse down - ready to drag (no positioning yet)");
     });
 
     document.addEventListener("mousemove", (e) => {
       if (!isDragging) return;
 
       e.preventDefault();
+
+      // Only apply absolute positioning when user actually starts dragging
+      if (!hasStartedDragging) {
+        hasStartedDragging = true;
+        const rect = element.getBoundingClientRect();
+        
+        // Now make element absolutely positioned for dragging
+        element.style.position = "absolute";
+        element.style.left = rect.left + window.scrollX + "px";
+        element.style.top = rect.top + window.scrollY + "px";
+        element.style.zIndex = "1000";
+        
+        // Update initial position for drag calculations
+        initialLeft = rect.left + window.scrollX;
+        initialTop = rect.top + window.scrollY;
+        
+        console.log("🎯 First drag movement - applied absolute positioning");
+      }
 
       const deltaX = e.clientX - startX;
       const deltaY = e.clientY - startY;
@@ -734,13 +907,23 @@ class AdminToolbar {
     element.style.removeProperty("outline-offset");
     element.classList.remove("admin-selected-element");
 
-    // Remove drag handle
+    // Remove drag handle and wrapper (if exists)
     const dragHandle = element.querySelector(".admin-drag-handle");
     if (dragHandle) {
       dragHandle.remove();
     }
+    
+    // Check if element is wrapped and unwrap it
+    const wrapper = element.parentNode;
+    if (wrapper && wrapper.style.position === "relative" && wrapper.style.display === "inline-block") {
+      // This looks like our wrapper - unwrap the element
+      const parent = wrapper.parentNode;
+      parent.insertBefore(element, wrapper);
+      wrapper.remove();
+      console.log("🗑️ Unwrapped element from drag wrapper");
+    }
 
-    console.log("🗑️ Removed selection border from element:", element.tagName);
+    console.log("🗑️ Removed selection border and cleanup from element:", element.tagName);
   }
 
   positionToolbarBelowElement(element) {
@@ -801,15 +984,17 @@ class AdminToolbar {
     console.log("🔄 Reset toolbar to default position");
   }
 
+
   makeElementEditable(element) {
     // Store original content for comparison
     const elementInfo = this.selectedElements[this.editingIndex];
 
-    // Check current state and set save button accordingly
-    const currentText = element.textContent?.trim() || "";
-    const originalText = elementInfo.originalText;
-    const hasChanges = currentText !== originalText;
-    this.updateSaveButtonState(hasChanges);
+    console.log('🔍 makeElementEditable - Original text stored as:', `"${elementInfo.originalText}"`);
+    console.log('🔍 makeElementEditable - Current element text:', `"${element.textContent?.trim()}"`);
+
+    // Always start with save button disabled when making element editable
+    console.log('🔍 makeElementEditable - Starting with save button DISABLED');
+    this.updateSaveButtonState(false);
 
     // Clean up existing event listeners if any (but don't change contentEditable yet)
     if (this.cleanupEditableElement) {
@@ -832,19 +1017,34 @@ class AdminToolbar {
 
     // Monitor content changes
     const checkForChanges = () => {
-      const currentText = element.textContent?.trim() || "";
+      // Extract only the actual text content, excluding drag handle
+      const dragHandle = element.querySelector('.admin-drag-handle');
+      let currentText = '';
+      
+      if (dragHandle) {
+        // Clone element and remove drag handle to get clean text
+        const clonedElement = element.cloneNode(true);
+        const clonedDragHandle = clonedElement.querySelector('.admin-drag-handle');
+        if (clonedDragHandle) {
+          clonedDragHandle.remove();
+        }
+        currentText = clonedElement.textContent?.trim() || "";
+      } else {
+        currentText = element.textContent?.trim() || "";
+      }
+      
       const originalText = elementInfo.originalText;
       const hasChanges = currentText !== originalText;
 
-      // Update element info with current text
+      // Update element info with current text (but keep originalText unchanged)
       elementInfo.text = currentText;
+
+      console.log(
+        `🔍 CHANGE CHECK: Current="${currentText}" Original="${originalText}" Changed=${hasChanges}`
+      );
 
       // Update save button state based on changes
       this.updateSaveButtonState(hasChanges);
-
-      console.log(
-        `Content check: "${currentText}" vs "${originalText}" - Changed: ${hasChanges}`
-      );
     };
 
     // Store reference to current function for cleanup
@@ -873,13 +1073,17 @@ class AdminToolbar {
         this.saveTextBtn.disabled = false;
         this.saveTextBtn.style.opacity = "1";
         this.saveTextBtn.style.cursor = "pointer";
-        console.log("✅ Save button enabled - changes detected");
+        this.saveTextBtn.style.background = "#22c55e";
+        console.log("✅ Save button ENABLED - changes detected");
       } else {
         this.saveTextBtn.disabled = true;
         this.saveTextBtn.style.opacity = "0.5";
         this.saveTextBtn.style.cursor = "not-allowed";
-        console.log("❌ Save button disabled - no changes");
+        this.saveTextBtn.style.background = "#94a3b8";
+        console.log("❌ Save button DISABLED - no changes");
       }
+    } else {
+      console.log("⚠️ Save button not found when trying to update state");
     }
   }
 
@@ -945,13 +1149,21 @@ class AdminToolbar {
     this.renderSelected();
 
     // Show edit interface based on current mode
+    console.log('🔧 editElement - current mode:', this.currentEditMode);
+    
+    // Make sure edit mode section is visible
+    this.editModeSection.style.display = "block";
+    console.log('🔧 Edit mode section made visible');
+    
     if (this.currentEditMode === "text") {
+      console.log('📝 Showing text editing section');
       this.textEditingSection.style.display = "block";
       this.aiEditSection.style.display = "none";
 
       // Make element editable and set up content monitoring
       this.makeElementEditable(element.element);
     } else {
+      console.log('🤖 Showing AI editing section');
       this.promptInput.value = "";
       this.aiEditSection.style.display = "block";
       this.textEditingSection.style.display = "none";
@@ -960,7 +1172,11 @@ class AdminToolbar {
   }
 
   async saveTextToFile() {
-    if (this.editingIndex < 0) return;
+    console.log('💾 Save button clicked! editingIndex:', this.editingIndex);
+    if (this.editingIndex < 0) {
+      console.log('❌ No element being edited');
+      return;
+    }
 
     const element = this.selectedElements[this.editingIndex];
     const newText = element.text.trim();
@@ -995,8 +1211,9 @@ class AdminToolbar {
         element.originalText = newText;
         element.originalHTML = element.element.innerHTML; // Update stored HTML to reflect changes
 
-        this.renderSelected();
-        this.cancelTextEdit();
+        // After successful save, clear all selections and hide toolbar
+        this.clearAllSelections();
+        this.hide();
         this.showStatus("✅ Saved to file successfully!", "success");
 
         // Increment edit counter when user saves text edits
@@ -1455,21 +1672,36 @@ class AdminToolbar {
   }
 
   cancelTextEdit() {
-    // Restore original content if editing
-    if (this.editingIndex >= 0 && this.cleanupEditableElement) {
+    console.log('❌ Cancel button clicked! editingIndex:', this.editingIndex);
+    // Restore original content and position if editing
+    if (this.editingIndex >= 0) {
       const elementInfo = this.selectedElements[this.editingIndex];
       if (elementInfo && elementInfo.element) {
         // Restore original HTML structure to preserve formatting
         elementInfo.element.innerHTML = elementInfo.originalHTML;
         elementInfo.text = elementInfo.originalText;
-        console.log("🔄 Restored original HTML structure");
+        
+        // Restore original position (remove absolute positioning from drag)
+        elementInfo.element.style.removeProperty('position');
+        elementInfo.element.style.removeProperty('left');
+        elementInfo.element.style.removeProperty('top');
+        elementInfo.element.style.removeProperty('z-index');
+        elementInfo.element.style.removeProperty('cursor');
+        
+        // Clean up any contentEditable state
+        if (this.cleanupEditableElement) {
+          this.cleanupEditableElement();
+          this.cleanupEditableElement = null;
+        }
+        
+        console.log("🔄 Restored original HTML structure and position");
       }
     }
 
-    // Clear all selections and remove borders
+    // Clear all selections and hide toolbar completely
     this.clearAllSelections();
-
-    this.showStatus("Edit cancelled - original structure restored", "info");
+    this.hide();
+    this.showStatus("Edit cancelled - element restored to original state", "info");
   }
 
   setAIProcessingState(isProcessing) {
@@ -1528,15 +1760,42 @@ class AdminToolbar {
   }
 
   cancelAiEdit() {
+    console.log('❌ AI Cancel button clicked! editingIndex:', this.editingIndex);
+    
     // Clear the AI prompt input
     if (this.promptInput) {
       this.promptInput.value = "";
     }
+    
+    // Restore original content and position if editing (same as manual edit cancel)
+    if (this.editingIndex >= 0) {
+      const elementInfo = this.selectedElements[this.editingIndex];
+      if (elementInfo && elementInfo.element) {
+        // Restore original HTML structure to preserve formatting
+        elementInfo.element.innerHTML = elementInfo.originalHTML;
+        elementInfo.text = elementInfo.originalText;
+        
+        // Restore original position (remove absolute positioning from drag)
+        elementInfo.element.style.removeProperty('position');
+        elementInfo.element.style.removeProperty('left');
+        elementInfo.element.style.removeProperty('top');
+        elementInfo.element.style.removeProperty('z-index');
+        elementInfo.element.style.removeProperty('cursor');
+        
+        // Clean up any contentEditable state
+        if (this.cleanupEditableElement) {
+          this.cleanupEditableElement();
+          this.cleanupEditableElement = null;
+        }
+        
+        console.log("🔄 AI Cancel - Restored original HTML structure and position");
+      }
+    }
 
-    // Clear all selections and remove borders
+    // Clear all selections and hide toolbar completely (same as manual edit cancel)
     this.clearAllSelections();
-
-    this.showStatus("AI edit cancelled - selections cleared", "info");
+    this.hide();
+    this.showStatus("AI edit cancelled - element restored to original state", "info");
   }
 
   highlightElement(element) {
@@ -2214,7 +2473,7 @@ class AdminToolbar {
             /* Modern Admin Toolbar - Minimal Clean Design */
             .admin-toolbar-popup {
                 position: fixed;
-                bottom: 110px;
+                bottom: 20px;
                 right: 20px;
                 width: 360px;
                 max-height: 520px;
@@ -2996,7 +3255,7 @@ class AdminToolbar {
                 height: 40px;
                 background: #e0e0e0;
                 border: none;
-                border-radius: 50%;
+                border-radius: 100%;
                 cursor: pointer;
                 transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
                 text-decoration: none;
@@ -3009,6 +3268,7 @@ class AdminToolbar {
             .admin-top-div > *:hover {
                 background: #d5d5d5;
                 transform: scale(1.1);
+                border-radius: 100%
             }
             
             /* Button text styling */
@@ -3018,7 +3278,7 @@ class AdminToolbar {
                 padding: 0 12px;
                 min-width: auto;
                 width: auto;
-                border-radius: 20px;
+                border-radius: 100%;
             }
             
             /* Input styling */
@@ -3050,7 +3310,17 @@ class AdminToolbar {
                 transform: translateX(-50%) translateY(0);
             }
             
+            /* Logout button specific styling */
+            #admin-logout-button {
+                background: #ef4444 !important;
+                color: white !important;
+            }
             
+            #admin-logout-button:hover {
+                background: #dc2626 !important;
+                color: white !important;
+                transform: scale(1.1);
+            }
             
             /* Responsive adjustments */
             @media (max-width: 768px) {

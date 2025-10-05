@@ -1,12 +1,15 @@
 <!-- Admin Toolbar Injection Template -->
 <!-- This script is injected when accessing /admin routes -->
-<script>
 
-// Authentication Modal
-function showAuthModal() {
+<!-- Load Universal Admin Button for non-admin pages -->
+<script src="/admin-static/universal-admin-button.js"></script>
+
+<script>
+  // Authentication Modal
+  function showAuthModal() {
     // Create modal overlay
-    const modalOverlay = document.createElement('div');
-    modalOverlay.id = 'admin-auth-modal';
+    const modalOverlay = document.createElement("div");
+    modalOverlay.id = "admin-auth-modal";
     modalOverlay.style.cssText = `
         position: fixed;
         top: 0;
@@ -21,9 +24,9 @@ function showAuthModal() {
         justify-content: center;
         animation: fadeIn 0.3s ease-out;
     `;
-    
+
     // Create modal content
-    const modalContent = document.createElement('div');
+    const modalContent = document.createElement("div");
     modalContent.style.cssText = `
         background: white;
         border-radius: 12px;
@@ -39,7 +42,7 @@ function showAuthModal() {
         color: #333;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
     `;
-    
+
     modalContent.innerHTML = `
         <div style="margin-bottom: 30px;">
             <div style="font-size: 48px; margin-bottom: 15px;">🔐</div>
@@ -156,12 +159,12 @@ function showAuthModal() {
             border: 1px solid #fcc;
         "></div>
     `;
-    
+
     modalOverlay.appendChild(modalContent);
     document.body.appendChild(modalOverlay);
-    
+
     // Add CSS animations
-    const style = document.createElement('style');
+    const style = document.createElement("style");
     style.textContent = `
         @keyframes fadeIn {
             from { opacity: 0; }
@@ -176,38 +179,38 @@ function showAuthModal() {
         }
     `;
     document.head.appendChild(style);
-    
+
     // Password toggle function
-    window.togglePasswordVisibility = function() {
-        const passwordField = document.getElementById('admin-password');
-        const toggleButton = document.getElementById('toggle-password');
-        
-        if (passwordField.type === 'password') {
-            passwordField.type = 'text';
-            // Eye with slash (hidden)
-            toggleButton.innerHTML = `
+    window.togglePasswordVisibility = function () {
+      const passwordField = document.getElementById("admin-password");
+      const toggleButton = document.getElementById("toggle-password");
+
+      if (passwordField.type === "password") {
+        passwordField.type = "text";
+        // Eye with slash (hidden)
+        toggleButton.innerHTML = `
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
                     <line x1="1" y1="1" x2="23" y2="23"/>
                 </svg>
             `;
-        } else {
-            passwordField.type = 'password';
-            // Eye (visible)
-            toggleButton.innerHTML = `
+      } else {
+        passwordField.type = "password";
+        // Eye (visible)
+        toggleButton.innerHTML = `
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                     <circle cx="12" cy="12" r="3"/>
                 </svg>
             `;
-        }
+      }
     };
-    
+
     // Success Animation Function - Fast and smooth
     function showSuccessAnimation(callback) {
-        // Create simple success overlay
-        const successOverlay = document.createElement('div');
-        successOverlay.style.cssText = `
+      // Create simple success overlay
+      const successOverlay = document.createElement("div");
+      successOverlay.style.cssText = `
             position: fixed;
             top: 0;
             left: 0;
@@ -221,17 +224,17 @@ function showAuthModal() {
             opacity: 0;
             animation: quickFadeIn 0.2s ease-out forwards;
         `;
-        
-        // Create simple success content
-        const successContent = document.createElement('div');
-        successContent.style.cssText = `
+
+      // Create simple success content
+      const successContent = document.createElement("div");
+      successContent.style.cssText = `
             text-align: center;
             color: black;
             transform: scale(0.8);
             animation: quickPop 0.3s ease-out 0.1s forwards;
         `;
-        
-        successContent.innerHTML = `
+
+      successContent.innerHTML = `
             <div style="
                 width: 80px;
                 height: 80px;
@@ -249,13 +252,13 @@ function showAuthModal() {
             <h2 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: black;">Success!</h2>
             <p style="margin: 0; font-size: 14px; color: black; opacity: 0.7;">Logging you in...</p>
         `;
-        
-        successOverlay.appendChild(successContent);
-        document.body.appendChild(successOverlay);
-        
-        // Add simple animations CSS
-        const successStyle = document.createElement('style');
-        successStyle.textContent = `
+
+      successOverlay.appendChild(successContent);
+      document.body.appendChild(successOverlay);
+
+      // Add simple animations CSS
+      const successStyle = document.createElement("style");
+      successStyle.textContent = `
             @keyframes quickFadeIn {
                 from { opacity: 0; }
                 to { opacity: 1; }
@@ -269,54 +272,56 @@ function showAuthModal() {
                 to { opacity: 0; }
             }
         `;
-        document.head.appendChild(successStyle);
-        
-        // Remove animation after 0.8 seconds total
+      document.head.appendChild(successStyle);
+
+      // Remove animation after 0.8 seconds total
+      setTimeout(() => {
+        successOverlay.style.animation = "quickFadeOut 0.2s ease-out forwards";
         setTimeout(() => {
-            successOverlay.style.animation = 'quickFadeOut 0.2s ease-out forwards';
-            setTimeout(() => {
-                successOverlay.remove();
-                successStyle.remove();
-                callback();
-            }, 200);
-        }, 600);
+          successOverlay.remove();
+          successStyle.remove();
+          callback();
+        }, 200);
+      }, 600);
     }
-    
+
     // Handle form submission
-    document.getElementById('admin-auth-form').addEventListener('submit', (e) => {
+    document
+      .getElementById("admin-auth-form")
+      .addEventListener("submit", (e) => {
         e.preventDefault();
-        const username = document.getElementById('admin-username').value;
-        const password = document.getElementById('admin-password').value;
-        const errorDiv = document.getElementById('auth-error');
-        
-        if (username === 'admin' && password === 'admin123') {
-            // Success - show awesome animation then continue
-            showSuccessAnimation(() => {
-                modalOverlay.remove();
-                setAuthenticationState(true);
-                
-                // Show admin UI elements if they exist
-                if (window.showAdminUI) {
-                    window.showAdminUI();
-                }
-                
-                loadAdminToolbar();
-            });
+        const username = document.getElementById("admin-username").value;
+        const password = document.getElementById("admin-password").value;
+        const errorDiv = document.getElementById("auth-error");
+
+        if (username === "admin" && password === "admin123") {
+          // Success - show awesome animation then continue
+          showSuccessAnimation(() => {
+            modalOverlay.remove();
+            setAuthenticationState(true);
+
+            // Show admin UI elements if they exist
+            if (window.showAdminUI) {
+              window.showAdminUI();
+            }
+
+            loadAdminToolbar();
+          });
         } else {
-            // Show error
-            errorDiv.style.display = 'block';
-            errorDiv.textContent = '❌ Invalid credentials. Please try again.';
-            
-            // Shake animation
-            modalContent.style.animation = 'shake 0.5s ease-in-out';
-            setTimeout(() => {
-                modalContent.style.animation = '';
-            }, 500);
+          // Show error
+          errorDiv.style.display = "block";
+          errorDiv.textContent = "❌ Invalid credentials. Please try again.";
+
+          // Shake animation
+          modalContent.style.animation = "shake 0.5s ease-in-out";
+          setTimeout(() => {
+            modalContent.style.animation = "";
+          }, 500);
         }
-    });
-    
+      });
+
     // Add shake animation
-    const shakeStyle = document.createElement('style');
+    const shakeStyle = document.createElement("style");
     shakeStyle.textContent = `
         @keyframes shake {
             0%, 100% { transform: translateX(0) scale(1); }
@@ -325,249 +330,155 @@ function showAuthModal() {
         }
     `;
     document.head.appendChild(shakeStyle);
-    
+
     // Focus on username field
     setTimeout(() => {
-        document.getElementById('admin-username').focus();
+      document.getElementById("admin-username").focus();
     }, 400);
-}
+  }
 
-// Initialize authentication state with localStorage persistence
-const ADMIN_SESSION_KEY = 'admin_authenticated';
-window.isAuthenticated = localStorage.getItem(ADMIN_SESSION_KEY) === 'true';
+  // Initialize authentication state with localStorage persistence
+  const ADMIN_SESSION_KEY = "admin_authenticated";
+  window.isAuthenticated = localStorage.getItem(ADMIN_SESSION_KEY) === "true";
 
-// Check if we're in admin mode based on URL OR authentication state
-const isAdminMode = window.location.pathname.includes('/admin') || window.location.search.includes('admin=true') || window.isAuthenticated;
+  // Check if we're in admin mode based on URL OR authentication state
+  const isAdminMode =
+    window.location.pathname.includes("/admin") ||
+    window.location.search.includes("admin=true") ||
+    window.isAuthenticated;
 
-// Function to set authentication state
-function setAuthenticationState(authenticated) {
+  // Function to set authentication state
+  function setAuthenticationState(authenticated) {
     window.isAuthenticated = authenticated;
     if (authenticated) {
-        localStorage.setItem(ADMIN_SESSION_KEY, 'true');
+      localStorage.setItem(ADMIN_SESSION_KEY, "true");
     } else {
-        localStorage.removeItem(ADMIN_SESSION_KEY);
+      localStorage.removeItem(ADMIN_SESSION_KEY);
     }
-}
+  }
 
-// Function to hide admin UI elements
-function hideAdminUI() {
-    const logoutBtn = document.getElementById('admin-logout-button');
-    const editBtn = document.getElementById('admin-toolbar-button');
-    const versionDropdown = document.getElementById('version-history-dropdown');
-    const toolbar = document.getElementById('admin-toolbar');
-    const adminTopDiv = document.getElementById('admin-top-div');
-    const saveChangesBtn = document.getElementById('admin-save-changes-button');
-    const undoBtn = document.getElementById('admin-undo-button');
-    
+  // Function to hide admin UI elements
+  function hideAdminUI() {
+    const logoutBtn = document.getElementById("admin-logout-button");
+    const editBtn = document.getElementById("admin-toolbar-button");
+    const uploadBtn = document.getElementById("admin-upload-image-button");
+    const versionDropdown = document.getElementById("version-history-dropdown");
+    const toolbar = document.getElementById("admin-toolbar");
+    const adminTopDiv = document.getElementById("admin-top-div");
+    const saveChangesBtn = document.getElementById("admin-save-changes-button");
+    const undoBtn = document.getElementById("admin-undo-button");
+
     if (logoutBtn) {
-        logoutBtn.style.display = 'none';
+      logoutBtn.style.display = "none";
     }
     if (editBtn) {
-        editBtn.style.display = 'none';
+      editBtn.style.display = "none";
+    }
+    if (uploadBtn) {
+      uploadBtn.style.display = "none";
     }
     if (versionDropdown) {
-        versionDropdown.style.display = 'none';
+      versionDropdown.style.display = "none";
     }
     if (toolbar) {
-        toolbar.style.display = 'none';
+      toolbar.style.display = "none";
     }
     if (adminTopDiv) {
-        adminTopDiv.style.display = 'none';
+      adminTopDiv.style.display = "none";
     }
     if (saveChangesBtn) {
-        saveChangesBtn.style.display = 'none';
+      saveChangesBtn.style.display = "none";
     }
     if (undoBtn) {
-        undoBtn.style.display = 'none';
+      undoBtn.style.display = "none";
     }
-}
+  }
 
-// Function to logout and redirect
-function logoutAdmin() {
+  // Function to logout and redirect
+  function logoutAdmin() {
     setAuthenticationState(false);
     hideAdminUI();
-    
+
     // Redirect to the same page without /admin
     const currentPath = window.location.pathname;
-    if (currentPath.includes('/admin')) {
-        let newPath = currentPath.replace('/admin', '');
-        // Ensure path ends with / for proper relative path resolution
-        if (newPath && !newPath.endsWith('/')) {
-            newPath += '/';
-        }
-        window.location.href = newPath || '/';
-    } else if (window.location.search.includes('admin=true')) {
-        const url = new URL(window.location);
-        url.searchParams.delete('admin');
-        window.location.href = url.toString();
+    if (currentPath.includes("/admin")) {
+      let newPath = currentPath.replace("/admin", "");
+      // Ensure path ends with / for proper relative path resolution
+      if (newPath && !newPath.endsWith("/")) {
+        newPath += "/";
+      }
+      window.location.href = newPath || "/";
+    } else if (window.location.search.includes("admin=true")) {
+      const url = new URL(window.location);
+      url.searchParams.delete("admin");
+      window.location.href = url.toString();
     }
-}
+  }
 
-// Load the admin toolbar function (define before using)
-const loadAdminToolbar = () => {
-        console.log('📥 Loading admin toolbar script...');
-        
-        // Prevent double loading
-        if (window.adminToolbarLoaded) {
-            console.log('⚠️ Admin toolbar already loaded, skipping...');
+  // Load the admin toolbar function (define before using)
+  const loadAdminToolbar = () => {
+    console.log("📥 Loading admin toolbar script...");
+
+    // Prevent double loading
+    if (window.adminToolbarLoaded) {
+      console.log("⚠️ Admin toolbar already loaded, skipping...");
+      return;
+    }
+
+    // Load toolbar CSS and JS with cache busting
+    const toolbarScript = document.createElement("script");
+    toolbarScript.src = `/admin-static/toolbar.js?v=${Date.now()}`;
+    toolbarScript.onload = () => {
+      window.adminToolbarLoaded = true;
+      console.log("✅ Admin toolbar script loaded successfully");
+
+      // Wait a moment for toolbar to initialize
+      setTimeout(() => {
+        console.log("🔍 Window.adminToolbar:", window.adminToolbar);
+        console.log("🔍 AdminToolbar available:", typeof window.adminToolbar);
+
+        if (!window.adminToolbar) {
+          console.error("❌ AdminToolbar not found! Creating manually...");
+          // Try to create it manually
+          try {
+            if (typeof AdminToolbar !== "undefined") {
+              window.adminToolbar = new AdminToolbar();
+              console.log("✅ Manually created AdminToolbar instance");
+            } else {
+              console.error("❌ AdminToolbar class not found");
+              return;
+            }
+          } catch (e) {
+            console.error("❌ Error creating AdminToolbar:", e);
             return;
+          }
         }
-        
-        // Load toolbar CSS and JS with cache busting
-        const toolbarScript = document.createElement('script');
-        toolbarScript.src = `/admin-static/toolbar.js?v=${Date.now()}`;
-        toolbarScript.onload = () => {
-            window.adminToolbarLoaded = true;
-            console.log('✅ Admin toolbar script loaded successfully');
-            
-            // Wait a moment for toolbar to initialize
-            setTimeout(() => {
-                console.log('🔍 Window.adminToolbar:', window.adminToolbar);
-                console.log('🔍 AdminToolbar available:', typeof window.adminToolbar);
-                
-                if (!window.adminToolbar) {
-                    console.error('❌ AdminToolbar not found! Creating manually...');
-                    // Try to create it manually
-                    try {
-                        if (typeof AdminToolbar !== 'undefined') {
-                            window.adminToolbar = new AdminToolbar();
-                            console.log('✅ Manually created AdminToolbar instance');
-                        } else {
-                            console.error('❌ AdminToolbar class not found');
-                            return;
-                        }
-                    } catch (e) {
-                        console.error('❌ Error creating AdminToolbar:', e);
-                        return;
-                    }
-                }
-                
-                // Create logout button
-                const logoutButton = document.createElement('div');
-                logoutButton.id = 'admin-logout-button';
-                logoutButton.innerHTML = `
-                    <span>Logout</span>
-                `;
-                logoutButton.style.cssText = `
-                    position: fixed;
-                    bottom: 22px;
-                    right: 117px;
-                    z-index: 99999;
-                    align-items: center;
-                    background: red;
-                    color: white;
-                    padding: 10px 24px;
-                    border-radius: 12px;
-                    font-weight: 600;
-                    box-shadow: 
-                        0 8px 24px rgba(0, 0, 0, 0.08),
-                        0 2px 8px rgba(0, 0, 0, 0.04);
-                    backdrop-filter: blur(8px);
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-                    font-size: 14px;
-                    cursor: pointer;
-                    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-                    display: ${window.isAuthenticated ? 'flex' : 'none'};
-                `;
 
-                // Create save changes button
-                const saveChangesButton = document.createElement('div');
-                saveChangesButton.id = 'admin-save-changes-button';
-                saveChangesButton.innerHTML = `
-                    <span>Save Changes</span>
-                `;
-                saveChangesButton.style.cssText = `
-                    position: fixed;
-                    bottom: 22px;
-                    right: 230px;
-                    z-index: 99999;
-                    align-items: center;
-                    background: #059669;
-                    color: white;
-                    padding: 9px 18px;
-                    border-radius: 12px;
-                    font-weight: 600;
-                    box-shadow: 
-                        0 8px 24px rgba(0, 0, 0, 0.08),
-                        0 2px 8px rgba(0, 0, 0, 0.04);
-                    backdrop-filter: blur(8px);
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-                    font-size: 14px;
-                    cursor: not-allowed;
-                    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-                    opacity: 0.5;
-                    display: none;
-                `;
-                saveChangesButton.disabled = true;
+        // Logout button will be created in the dock by toolbar.js
 
-                // Create undo button
-                const undoButton = document.createElement('div');
-                undoButton.id = 'admin-undo-button';
-                undoButton.innerHTML = `
-                    <span>Undo</span>
-                `;
-                undoButton.style.cssText = `
-                    position: fixed;
-                    bottom: 22px;
-                    right: 390px;
-                    z-index: 99999;
-                    align-items: center;
-                    background: #ef4444;
-                    color: white;
-                    padding: 9px 18px;
-                    border-radius: 12px;
-                    font-weight: 600;
-                    box-shadow: 
-                        0 8px 24px rgba(0, 0, 0, 0.08),
-                        0 2px 8px rgba(0, 0, 0, 0.04);
-                    backdrop-filter: blur(8px);
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-                    font-size: 14px;
-                    cursor: not-allowed;
-                    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-                    opacity: 0.5;
-                    display: none;
-                `;
-                undoButton.disabled = true;
+        // Save Changes and Undo buttons are now part of the dock
 
-                // Create admin toolbar button beside the LintAI watermark
-                const adminButton = document.createElement('div');
-                adminButton.id = 'admin-toolbar-button';
-                adminButton.innerHTML = `
-                    <span>Edit</span>
-                `;
-                adminButton.style.cssText = `
-                    position: fixed;
-                    bottom: 21px;
-                    right: 29px;
-                    z-index: 99999;
-                    align-items: center;
-                    background: white;
-                    color: black;
-                    padding: 10px 24px;
-                    border-radius: 12px;
-                    font-weight: 600;
-                    border: 1px solid #1a1a1a;
-                    box-shadow: 
-                        0 8px 24px rgba(0, 0, 0, 0.25),
-                        0 2px 8px rgba(0, 0, 0, 0.15);
-                    backdrop-filter: blur(8px);
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-                    font-size: 14px;
-                    cursor: pointer;
-                    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-                    display: ${window.isAuthenticated ? 'flex' : 'none'};
-                `;
-                
-                // Create version history dropdown
-                const versionDropdown = document.createElement('div');
-                versionDropdown.id = 'version-history-dropdown';
-                versionDropdown.innerHTML = `
+        // Edit button is now handled by the dock
+
+        // Upload button is now handled by the dock
+
+        // Create hidden file input for upload image button
+        const uploadImageInput = document.createElement("input");
+        uploadImageInput.type = "file";
+        uploadImageInput.id = "top-level-image-upload-input";
+        uploadImageInput.accept =
+          "image/png,image/jpg,image/jpeg,image/gif,image/svg+xml,image/webp";
+        uploadImageInput.style.display = "none";
+
+        // Create version history dropdown
+        const versionDropdown = document.createElement("div");
+        versionDropdown.id = "version-history-dropdown";
+        versionDropdown.innerHTML = `
                     <select id="version-select" style="
                         background: #ffffff;
-                        color: #0f172a;
-                        border: 1px solid #e2e8f0;
-                        border-radius: 8px;
+                        color: #374151;
+                        border: none;
+                        border-radius: 12px;
                         padding: 10px 14px;
                         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
                         font-size: 13px;
@@ -575,630 +486,588 @@ const loadAdminToolbar = () => {
                         cursor: pointer;
                         outline: none;
                         min-width: 140px;
-                        transition: all 0.2s ease;
-                        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+                        transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
                     ">
                         <option value="">Loading...</option>
                     </select>
                 `;
-                versionDropdown.style.cssText = `
+        versionDropdown.style.cssText = `
                     position: fixed;
-                    bottom: 18px;
-                    left: 25px;
+                    bottom: 20px;
+                    left: 20px;
                     z-index: 99999;
-                    background: #000000;
+                    background: rgba(255, 255, 255, 0.95);
                     padding: 5px 5px;
-                    border-radius: 12px;
+                    border-radius: 16px;
                     align-items: center;
-                    gap: 10px;
-                    display: ${window.isAuthenticated ? 'flex' : 'none'};
+                    gap: 12px;
+                    display: ${window.isAuthenticated ? "flex" : "none"};
+                    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+                    backdrop-filter: blur(8px);
+                    border: 1px solid rgba(0, 0, 0, 0.06);
+                    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
                 `;
-                
-                // Create rollback button
-                const rollbackButton = document.createElement('button');
-                rollbackButton.id = 'rollback-button';
-                rollbackButton.innerHTML = '↺ Rollback';
-                rollbackButton.disabled = true;
-                rollbackButton.style.cssText = `
-                    background: #f1f5f9;
-                    color: #94a3b8;
-                    border: 1px solid #cbd5e1;
-                    border-radius: 8px;
+
+        // Create rollback button
+        const rollbackButton = document.createElement("button");
+        rollbackButton.id = "rollback-button";
+        rollbackButton.innerHTML = "↺ Rollback";
+        rollbackButton.disabled = true;
+        rollbackButton.style.cssText = `
+                    background: #ffffff;
+                    color: #6b7280;
+                    border: none;
+                    border-radius: 12px;
                     padding: 10px 16px;
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
                     font-size: 13px;
-                    font-weight: 600;
+                    font-weight: 500;
                     cursor: not-allowed;
-                    transition: all 0.2s ease;
-                    opacity: 0.7;
-                    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
-                    filter: grayscale(100%);
+                    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+                    opacity: 0.6;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
                 `;
-                
-                versionDropdown.appendChild(rollbackButton);
-                
-                
-                // Add hover effect for logout button
-                logoutButton.addEventListener('mouseenter', () => {
-                    logoutButton.style.background = '#000000';
-                    logoutButton.style.color = '#ffffff';
-                    logoutButton.style.borderColor = '#ffffff';
-                    logoutButton.style.transform = 'translateY(-2px)';
-                    logoutButton.style.boxShadow = '0 12px 32px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.15)';
-                });
-                logoutButton.addEventListener('mouseleave', () => {
-                    logoutButton.style.background = 'red';
-                    logoutButton.style.color = 'white';
-                    logoutButton.style.borderColor = '#e2e8f0';
-                    logoutButton.style.transform = 'translateY(0px)';
-                    logoutButton.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04)';
-                });
 
-                // Add click handler for logout button
-                logoutButton.addEventListener('click', () => {
-                    console.log('🚪 Logout button clicked!');
-                    logoutAdmin();
-                });
+        versionDropdown.appendChild(rollbackButton);
 
-                // Add hover effects for save changes button
-                saveChangesButton.addEventListener('mouseenter', () => {
-                    if (!saveChangesButton.disabled) {
-                        saveChangesButton.style.background = '#047857';
-                        saveChangesButton.style.transform = 'translateY(-2px)';
-                        saveChangesButton.style.boxShadow = '0 12px 32px rgba(5, 150, 105, 0.3), 0 4px 12px rgba(5, 150, 105, 0.15)';
-                    }
-                });
-                saveChangesButton.addEventListener('mouseleave', () => {
-                    if (!saveChangesButton.disabled) {
-                        saveChangesButton.style.background = '#059669';
-                        saveChangesButton.style.transform = 'translateY(0px)';
-                        saveChangesButton.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04)';
-                    }
-                });
+        // Save Changes and Undo button event handlers are now in toolbar.js for the dock buttons
 
-                // Add click handler for save changes button
-                saveChangesButton.addEventListener('click', async () => {
-                    if (saveChangesButton.disabled) return;
-                    
-                    console.log('💾 Save changes button clicked!');
-                    saveChangesButton.disabled = true;
-                    saveChangesButton.style.cursor = 'not-allowed';
-                    saveChangesButton.style.opacity = '0.5';
-                    saveChangesButton.innerHTML = '<span>Publishing...</span>';
-                    
-                    // Also disable undo button during publish
-                    undoButton.disabled = true;
-                    undoButton.style.cursor = 'not-allowed';
-                    undoButton.style.opacity = '0.5';
-                    
-                    try {
-                        const response = await fetch('/api/publish', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' }
-                        });
-                        
-                        const result = await response.json();
-                        
-                        if (result.success) {
-                            saveChangesButton.innerHTML = '<span>✅ Published!</span>';
-                            undoButton.innerHTML = '<span>✅ Published!</span>';
-                            setTimeout(() => {
-                                saveChangesButton.style.display = 'none';
-                                undoButton.style.display = 'none';
-                                window.resetEditCount();
-                            }, 2000);
-                            
-                            if (window.adminToolbar && typeof window.adminToolbar.showStatus === 'function') {
-                                window.adminToolbar.showStatus('✅ All changes published to GitHub!', 'success');
-                            }
-                        } else {
-                            window.updateSaveChangesButton();
-                            
-                            if (window.adminToolbar && typeof window.adminToolbar.showStatus === 'function') {
-                                window.adminToolbar.showStatus('❌ Failed to publish: ' + (result.error || result.message), 'error');
-                            }
-                        }
-                    } catch (error) {
-                        window.updateSaveChangesButton();
-                        
-                        if (window.adminToolbar && typeof window.adminToolbar.showStatus === 'function') {
-                            window.adminToolbar.showStatus('❌ Network error while publishing', 'error');
-                        }
-                        console.error('Save changes error:', error);
-                    }
-                });
+        // Edit button event handlers are now handled by the dock
 
-                // Add hover effects for undo button
-                undoButton.addEventListener('mouseenter', () => {
-                    if (!undoButton.disabled) {
-                        undoButton.style.background = '#dc2626';
-                        undoButton.style.transform = 'translateY(-2px)';
-                        undoButton.style.boxShadow = '0 12px 32px rgba(239, 68, 68, 0.3), 0 4px 12px rgba(239, 68, 68, 0.15)';
-                    }
-                });
-                undoButton.addEventListener('mouseleave', () => {
-                    if (!undoButton.disabled) {
-                        undoButton.style.background = '#ef4444';
-                        undoButton.style.transform = 'translateY(0px)';
-                        undoButton.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04)';
-                    }
-                });
+        // Upload button event handlers are now handled by the dock
 
-                // Add click handler for undo button
-                undoButton.addEventListener('click', async () => {
-                    if (undoButton.disabled) return;
-                    
-                    console.log('↶ Undo button clicked!');
-                    
-                    // Confirm with user
-                    if (!confirm(`Are you sure you want to undo all ${window.editCount} unsaved changes? This cannot be undone.`)) {
-                        return;
-                    }
-                    
-                    undoButton.disabled = true;
-                    undoButton.style.cursor = 'not-allowed';
-                    undoButton.style.opacity = '0.5';
-                    undoButton.innerHTML = '<span>Undoing...</span>';
-                    
-                    try {
-                        const response = await fetch('/api/undo', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' }
-                        });
-                        
-                        const result = await response.json();
-                        
-                        if (result.success) {
-                            undoButton.innerHTML = '<span>✅ Undone!</span>';
-                            setTimeout(() => {
-                                window.resetEditCount();
-                                undoButton.style.display = 'none';
-                                saveChangesButton.style.display = 'none';
-                                undoButton.innerHTML = '<span>↶ Undo</span>';
-                                
-                                // Reload page to show reverted changes
-                                window.location.reload();
-                            }, 1500);
-                            
-                            if (window.adminToolbar && typeof window.adminToolbar.showStatus === 'function') {
-                                window.adminToolbar.showStatus('✅ All changes have been undone!', 'success');
-                            }
-                        } else {
-                            undoButton.innerHTML = '<span>↶ Undo</span>';
-                            window.updateSaveChangesButton();
-                            
-                            if (window.adminToolbar && typeof window.adminToolbar.showStatus === 'function') {
-                                window.adminToolbar.showStatus('❌ Failed to undo: ' + (result.error || result.message), 'error');
-                            }
-                        }
-                    } catch (error) {
-                        undoButton.innerHTML = '<span>↶ Undo</span>';
-                        window.updateSaveChangesButton();
-                        
-                        if (window.adminToolbar && typeof window.adminToolbar.showStatus === 'function') {
-                            window.adminToolbar.showStatus('❌ Network error while undoing', 'error');
-                        }
-                        console.error('Undo error:', error);
-                    }
-                });
+        // Handle image upload from top-level button
+        uploadImageInput.addEventListener("change", async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
 
-                // Add hover effect for edit button
-                adminButton.addEventListener('mouseenter', () => {
-                    adminButton.style.background = '#1a1a1a';
-                    adminButton.style.transform = 'translateY(-2px)';
-                    adminButton.style.boxShadow = '0 12px 32px rgba(0, 0, 0, 0.35), 0 4px 12px rgba(0, 0, 0, 0.25)';
-                });
-                adminButton.addEventListener('mouseleave', () => {
-                    adminButton.style.background = '#000000';
-                    adminButton.style.transform = 'translateY(0px)';
-                    adminButton.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.25), 0 2px 8px rgba(0, 0, 0, 0.15)';
-                });
-                
-                // Add click handler to toggle toolbar
-                adminButton.addEventListener('click', () => {
-                    console.log('🔧 Admin button clicked!');
-                    
-                    if (window.adminToolbar) {
-                        if (window.adminToolbar.isVisible) {
-                            window.adminToolbar.hide();
-                        } else {
-                            window.adminToolbar.show();
-                        }
-                    }
-                });
-                
-                // Add version history functionality
-                async function loadVersionHistory() {
-                    console.log('🚀 loadVersionHistory function called');
-                    try {
-                        console.log('📡 Loading version history...');
-                        const response = await fetch('/api/version-history');
-                        const data = await response.json();
+          // Forward to toolbar's upload handler if it exists
+          if (
+            window.adminToolbar &&
+            typeof window.adminToolbar.handleImageUpload === "function"
+          ) {
+            console.log("📷 Forwarding to toolbar image upload handler");
+            await window.adminToolbar.handleImageUpload(e);
+          } else {
+            console.error("❌ Admin toolbar image upload handler not found");
+          }
 
-                        console.log("✅ Version history data:", data);
-                        
-                        const versionSelect = document.getElementById('version-select');
-                        if (!versionSelect) {
-                            console.error('❌ Version select element not found');
-                            return;
-                        }
-                        
-                        versionSelect.innerHTML = '<option value="">Select Version...</option>';
-                        
-                        if (data.success && data.history && data.history.length > 0) {
-                            console.log(`📋 Found ${data.history.length} versions`);
-                            data.history.forEach(version => {
-                                const option = document.createElement('option');
-                                option.value = version.tag;
-                                option.textContent = `${version.tag} - ${version.message.substring(0, 30)}${version.message.length > 30 ? '...' : ''}`;
-                                versionSelect.appendChild(option);
-                            });
-                            console.log('✅ Version dropdown populated successfully');
-                        } else {
-                            console.log('⚠️ No versions found');
-                            versionSelect.innerHTML = '<option value="">No versions found</option>';
-                        }
-                    } catch (error) {
-                        console.error('❌ Failed to load version history:', error);
-                        const versionSelect = document.getElementById('version-select');
-                        if (versionSelect) {
-                            versionSelect.innerHTML = '<option value="">Load failed</option>';
-                        }
-                    }
-                    console.log('🏁 loadVersionHistory function completed');
+          // Reset file input
+          uploadImageInput.value = "";
+        });
+
+        // Add version history functionality
+        async function loadVersionHistory() {
+          console.log("🚀 loadVersionHistory function called");
+          try {
+            console.log("📡 Loading version history...");
+            const response = await fetch("/api/version-history");
+            const data = await response.json();
+
+            console.log("✅ Version history data:", data);
+
+            const versionSelect = document.getElementById("version-select");
+            if (!versionSelect) {
+              console.error("❌ Version select element not found");
+              return;
+            }
+
+            versionSelect.innerHTML =
+              '<option value="">Select Version...</option>';
+
+            if (data.success && data.history && data.history.length > 0) {
+              console.log(`📋 Found ${data.history.length} versions`);
+              data.history.forEach((version) => {
+                const option = document.createElement("option");
+                option.value = version.tag;
+                option.textContent = `${
+                  version.tag
+                } - ${version.message.substring(0, 30)}${
+                  version.message.length > 30 ? "..." : ""
+                }`;
+                versionSelect.appendChild(option);
+              });
+              console.log("✅ Version dropdown populated successfully");
+            } else {
+              console.log("⚠️ No versions found");
+              versionSelect.innerHTML =
+                '<option value="">No versions found</option>';
+            }
+          } catch (error) {
+            console.error("❌ Failed to load version history:", error);
+            const versionSelect = document.getElementById("version-select");
+            if (versionSelect) {
+              versionSelect.innerHTML = '<option value="">Load failed</option>';
+            }
+          }
+          console.log("🏁 loadVersionHistory function completed");
+        }
+
+        console.log("➕ Adding admin elements to page...");
+        // Logout, Save Changes, Undo, Edit, and Upload buttons are now handled by the dock
+        document.body.appendChild(uploadImageInput);
+        document.body.appendChild(versionDropdown);
+        console.log("✅ Admin elements added successfully");
+
+        // Load version history and setup event listeners after loading
+        console.log("🎯 About to call loadVersionHistory...");
+        loadVersionHistory().then(() => {
+          console.log(
+            "🎉 loadVersionHistory completed, setting up listeners..."
+          );
+          // Setup version selection change handler after history is loaded
+          setTimeout(() => {
+            const versionSelect = document.getElementById("version-select");
+            const rollbackBtn = document.getElementById("rollback-button");
+
+            console.log("🔧 Setting up version change listener...");
+            console.log("🔍 Version select found:", !!versionSelect);
+            console.log("🔍 Rollback button found:", !!rollbackBtn);
+
+            if (versionSelect && rollbackBtn) {
+              // Add dock-style hover effects for select dropdown
+              versionSelect.addEventListener("mouseenter", function () {
+                this.style.transform = "translateY(-2px)";
+                this.style.boxShadow =
+                  "0 12px 32px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08)";
+              });
+              versionSelect.addEventListener("mouseleave", function () {
+                this.style.transform = "translateY(0px)";
+                this.style.boxShadow =
+                  "0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04)";
+              });
+
+              // Add enhanced hover effects for rollback button
+              rollbackBtn.addEventListener("mouseenter", function () {
+                if (!this.disabled) {
+                  this.style.background =
+                    "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)";
+                  this.style.borderColor = "rgba(255, 255, 255, 0.3)";
+                  this.style.transform = "translateY(-2px)";
+                  this.style.boxShadow =
+                    "0 8px 24px rgba(239, 68, 68, 0.3), 0 4px 12px rgba(0, 0, 0, 0.15)";
+                  this.style.color = "#ffffff";
+                  this.style.opacity = "1";
                 }
-                
-                
-                
-                console.log('➕ Adding admin buttons to page...');
-                document.body.appendChild(logoutButton);
-                document.body.appendChild(saveChangesButton);
-                document.body.appendChild(undoButton);
-                document.body.appendChild(adminButton);
-                document.body.appendChild(versionDropdown);
-                console.log('✅ Admin buttons and version controls added successfully');
-                
-                // Load version history and setup event listeners after loading
-                console.log('🎯 About to call loadVersionHistory...');
-                loadVersionHistory().then(() => {
-                    console.log('🎉 loadVersionHistory completed, setting up listeners...');
-                    // Setup version selection change handler after history is loaded
-                    setTimeout(() => {
-                        const versionSelect = document.getElementById('version-select');
-                        const rollbackBtn = document.getElementById('rollback-button');
-                        
-                        console.log('🔧 Setting up version change listener...');
-                        console.log('🔍 Version select found:', !!versionSelect);
-                        console.log('🔍 Rollback button found:', !!rollbackBtn);
-                        
-                        if (versionSelect && rollbackBtn) {
-                            // Add hover effects for select dropdown
-                            versionSelect.addEventListener('mouseenter', function() {
-                                this.style.borderColor = '#cbd5e1';
-                                this.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.08)';
-                            });
-                            versionSelect.addEventListener('mouseleave', function() {
-                                this.style.borderColor = '#e2e8f0';
-                                this.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.04)';
-                            });
-
-                            // Add hover effects for rollback button
-                            rollbackBtn.addEventListener('mouseenter', function() {
-                                if (!this.disabled) {
-                                    this.style.background = '#fee2e2';
-                                    this.style.borderColor = '#fca5a5';
-                                    this.style.transform = 'translateY(-1px)';
-                                    this.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.08)';
-                                }
-                            });
-                            rollbackBtn.addEventListener('mouseleave', function() {
-                                if (!this.disabled) {
-                                    this.style.background = '#fef2f2';
-                                    this.style.borderColor = '#fecaca';
-                                    this.style.transform = 'translateY(0)';
-                                    this.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.04)';
-                                }
-                            });
-
-                            versionSelect.addEventListener('change', function() {
-                                const selectedTag = this.value;
-                                
-                                console.log('🔄 Version changed to:', selectedTag);
-                                console.log('🔍 Rollback button exists:', !!rollbackBtn);
-                                console.log('🔍 Rollback button current state:', {
-                                    disabled: rollbackBtn?.disabled,
-                                    innerHTML: rollbackBtn?.innerHTML,
-                                    style: rollbackBtn?.style.cssText
-                                });
-                                
-                                if (selectedTag && rollbackBtn) {
-                                    console.log('✅ Enabling rollback button');
-                                    rollbackBtn.disabled = false;
-                                    rollbackBtn.style.opacity = '1';
-                                    rollbackBtn.style.cursor = 'pointer';
-                                    rollbackBtn.style.background = '#fef2f2';
-                                    rollbackBtn.style.borderColor = '#fecaca';
-                                    rollbackBtn.style.color = '#dc2626';
-                                    rollbackBtn.style.filter = 'none';
-                                    console.log('✅ Rollback button enabled successfully');
-                                } else {
-                                    console.log('❌ Disabling rollback button, selectedTag:', selectedTag, 'rollbackBtn exists:', !!rollbackBtn);
-                                    if (rollbackBtn) {
-                                        rollbackBtn.disabled = true;
-                                        rollbackBtn.style.opacity = '0.6';
-                                        rollbackBtn.style.cursor = 'not-allowed';
-                                        rollbackBtn.style.background = '#f8fafc';
-                                        rollbackBtn.style.borderColor = '#e2e8f0';
-                                        rollbackBtn.style.color = '#94a3b8';
-                                        rollbackBtn.style.filter = 'grayscale(100%)';
-                                    }
-                                }
-                            });
-                            console.log('✅ Version change listener added successfully');
-                            
-                            // Also setup rollback button click handler here
-                            console.log('🔧 Setting up rollback button click handler...');
-                            if (rollbackBtn) {
-                                rollbackBtn.addEventListener('click', async function(event) {
-                                    console.log('🚀 Rollback button clicked!');
-                                    console.log('🔍 Button state at click:', {
-                                        disabled: this.disabled,
-                                        innerHTML: this.innerHTML,
-                                        event: event
-                                    });
-                                    
-                                    // Prevent multiple clicks and check if button is disabled
-                                    if (this.disabled) {
-                                        console.log('❌ Button is disabled, ignoring click');
-                                        return;
-                                    }
-                                    
-                                    const versionSelectElement = document.getElementById('version-select');
-                                    const selectedTag = versionSelectElement?.value;
-                                    console.log('📋 Selected tag:', selectedTag);
-                                    console.log('🔍 Version select element found:', !!versionSelectElement);
-                                    
-                                    if (!selectedTag || selectedTag === '') {
-                                        console.log('❌ No tag selected, showing alert');
-                                        alert('Please select a version first');
-                                        return;
-                                    }
-                                    
-                                    console.log('💭 Showing confirmation dialog...');
-                                    if (!confirm(`Are you sure you want to rollback to ${selectedTag}?\n\nThis will:\n- Reset the current state to that version\n- Force push changes to the repository\n- Reload the page\n\nThis action cannot be undone.`)) {
-                                        console.log('❌ User cancelled rollback');
-                                        return;
-                                    }
-                                    
-                                    console.log('🔄 Starting rollback process...');
-                                    // Disable button and show loading state
-                                    this.disabled = true;
-                                    this.innerHTML = '↺ Rolling back...';
-                                    this.style.cursor = 'not-allowed';
-                                    this.style.opacity = '0.6';
-                                    
-                                    try {
-                                        console.log('📡 Sending rollback request...');
-                                        const response = await fetch('/api/rollback', {
-                                            method: 'POST',
-                                            headers: {
-                                                'Content-Type': 'application/json',
-                                            },
-                                            body: JSON.stringify({ tag: selectedTag })
-                                        });
-                                        
-                                        console.log('📨 Rollback response status:', response.status);
-                                        
-                                        if (!response.ok) {
-                                            throw new Error(`HTTP error! status: ${response.status}`);
-                                        }
-                                        
-                                        const data = await response.json();
-                                        console.log("✅ Rollback response data:", data);
-                                        
-                                        if (data.success) {
-                                            console.log('🎉 Rollback successful!');
-                                            alert(`✅ Successfully rolled back to ${selectedTag}!\n\nThe page will now reload to show the changes.`);
-                                            // Clear any stored admin state since we've rolled back
-                                            localStorage.removeItem('admin_edit_count');
-                                            // Force a hard refresh to bypass cache and show rollback changes
-                                            setTimeout(() => {
-                                                // Multiple methods to ensure fresh content loads
-                                                // Method 1: Add cache-busting parameter
-                                                const url = new URL(window.location);
-                                                url.searchParams.set('_t', Date.now());
-                                                window.location.href = url.toString();
-                                            }, 500);
-                                        } else {
-                                            console.error('❌ Rollback failed:', data.error);
-                                            alert(`❌ Rollback failed: ${data.error || data.message || 'Unknown error'}`);
-                                        }
-                                    } catch (error) {
-                                        console.error('❌ Rollback network/parse error:', error);
-                                        alert(`❌ Rollback failed: ${error.message || 'Network error'}`);
-                                    } finally {
-                                        // Reset button state
-                                        this.disabled = false;
-                                        this.innerHTML = '↺ Rollback';
-                                        this.style.cursor = 'pointer';
-                                        this.style.opacity = '1';
-                                        console.log('🔄 Button state reset');
-                                    }
-                                });
-                                console.log('✅ Rollback button click handler added successfully');
-                            } else {
-                                console.error('❌ Could not setup rollback button click handler - button not found');
-                            }
-                        } else {
-                            console.error('❌ Could not setup version change listener - elements not found');
-                        }
-                    }, 100);
-                });
-                
-                // Function to show admin UI elements
-                window.showAdminUI = function() {
-                    console.log('🔧 Showing admin UI elements...');
-                    logoutButton.style.display = 'flex';
-                    adminButton.style.display = 'flex';
-                    versionDropdown.style.display = 'flex';
-                    console.log('✅ Admin UI elements are now visible');
-                };
-
-                // Function to show save changes button when toolbar is opened
-                window.showSaveChangesButton = function() {
-                    console.log('💾 Showing save changes button...');
-                    saveChangesButton.style.display = 'flex';
-                };
-
-                // Function to hide save changes button when toolbar is closed
-                window.hideSaveChangesButton = function() {
-                    console.log('💾 Hiding save changes button...');
-                    saveChangesButton.style.display = 'none';
-                };
-
-                // Function to show undo button when toolbar is opened
-                window.showUndoButton = function() {
-                    console.log('↶ Showing undo button...');
-                    undoButton.style.display = 'flex';
-                };
-
-                // Function to hide undo button when toolbar is closed
-                window.hideUndoButton = function() {
-                    console.log('↶ Hiding undo button...');
-                    undoButton.style.display = 'none';
-                };
-
-                // Edit counter with persistent state
-                const EDIT_COUNT_KEY = 'admin_edit_count';
-                window.editCount = parseInt(localStorage.getItem(EDIT_COUNT_KEY)) || 0;
-                console.log(`📊 Restored edit count from storage: ${window.editCount}`);
-
-                // Function to update save changes button with edit count
-                window.updateSaveChangesButton = function() {
-                    if (window.editCount > 0) {
-                        console.log(`💾 Updating save changes button with ${window.editCount} edits...`);
-                        
-                        // Make buttons visible and enabled
-                        saveChangesButton.style.display = 'flex';
-                        saveChangesButton.disabled = false;
-                        saveChangesButton.style.cursor = 'pointer';
-                        saveChangesButton.style.opacity = '1';
-                        saveChangesButton.style.background = '#059669';
-                        saveChangesButton.innerHTML = `<span>Save Changes (${window.editCount})</span>`;
-                        
-                        // Also make undo button visible and enabled
-                        undoButton.style.display = 'flex';
-                        undoButton.disabled = false;
-                        undoButton.style.cursor = 'pointer';
-                        undoButton.style.opacity = '1';
-                        undoButton.style.background = '#ef4444';
-                    } else {
-                        console.log('💾 Resetting save changes button...');
-                        
-                        // Hide and disable buttons
-                        saveChangesButton.style.display = 'none';
-                        saveChangesButton.disabled = true;
-                        saveChangesButton.style.cursor = 'not-allowed';
-                        saveChangesButton.style.opacity = '0.5';
-                        saveChangesButton.style.background = '#059669';
-                        saveChangesButton.innerHTML = '<span>Save Changes</span>';
-                        
-                        // Also hide and disable undo button
-                        undoButton.style.display = 'none';
-                        undoButton.disabled = true;
-                        undoButton.style.cursor = 'not-allowed';
-                        undoButton.style.opacity = '0.5';
-                        undoButton.style.background = '#ef4444';
-                    }
-                };
-
-                // Function to increment edit count and update button
-                window.incrementEditCount = function() {
-                    console.log('🚀 incrementEditCount called!');
-                    window.editCount++;
-                    localStorage.setItem(EDIT_COUNT_KEY, window.editCount.toString());
-                    console.log(`📝 Edit count incremented to: ${window.editCount} (saved to storage)`);
-                    console.log('🔄 About to call updateSaveChangesButton...');
-                    window.updateSaveChangesButton();
-                    console.log('✅ updateSaveChangesButton completed');
-                };
-
-                // Function to reset edit count
-                window.resetEditCount = function() {
-                    window.editCount = 0;
-                    localStorage.setItem(EDIT_COUNT_KEY, '0');
-                    console.log('🔄 Edit count reset to 0 (saved to storage)');
-                    window.updateSaveChangesButton();
-                };
-
-                // Function to enable save changes button when edits are made (legacy support)
-                window.enableSaveChangesButton = function() {
-                    window.incrementEditCount();
-                };
-
-                // Function to disable save changes button (legacy support)
-                window.disableSaveChangesButton = function() {
-                    window.resetEditCount();
-                };
-                
-                // Show admin button and version controls if authenticated
-                if (window.isAuthenticated) {
-                    window.showAdminUI();
-                    // Initialize save/undo buttons based on stored edit count
-                    console.log('🔄 Initializing save/undo buttons on page load...');
-                    window.updateSaveChangesButton();
+              });
+              rollbackBtn.addEventListener("mouseleave", function () {
+                if (!this.disabled) {
+                  this.style.background =
+                    "linear-gradient(135deg, #f87171 0%, #ef4444 100%)";
+                  this.style.borderColor = "rgba(255, 255, 255, 0.2)";
+                  this.style.transform = "translateY(0px)";
+                  this.style.boxShadow =
+                    "0 4px 12px rgba(239, 68, 68, 0.2), 0 2px 4px rgba(0, 0, 0, 0.1)";
+                  this.style.color = "#ffffff";
+                  this.style.opacity = "0.9";
                 }
-                
-                // Initialize buttons based on stored state after toolbar loads
-                setTimeout(() => {
-                    console.log('🔄 Final initialization of save/undo buttons...');
-                    window.updateSaveChangesButton();
-                }, 100);
-                
-                // Show welcome message
-                setTimeout(() => {
-                    if (window.adminToolbar && typeof window.adminToolbar.showStatus === 'function') {
-                        console.log('📢 Showing welcome message...');
-                        const editCountMsg = window.editCount > 0 ? ` (${window.editCount} unsaved changes)` : '';
-                        window.adminToolbar.showStatus(`Admin mode activated${editCountMsg}! Click "Edit" to start editing`, 'success');
-                    } else {
-                        console.log('ℹ️ Skipping welcome message - showStatus not available');
-                    }
-                }, 1000);
-            }, 500); // Wait for toolbar initialization
-        };
-        toolbarScript.onerror = () => {
-            console.error('❌ Failed to load admin toolbar script from /admin-static/toolbar.js');
-        };
-        
-        console.log('📤 Appending toolbar script to head...');
-        document.head.appendChild(toolbarScript);
-};
+              });
 
-if (isAdminMode) {
-    console.log('🔧 Admin mode detected - initializing toolbar...');
-    console.log('🔍 Current URL:', window.location.href);
-    console.log('🔍 Pathname:', window.location.pathname);
-    console.log('🔍 Already authenticated:', window.isAuthenticated);
-    
+              versionSelect.addEventListener("change", function () {
+                const selectedTag = this.value;
+
+                console.log("🔄 Version changed to:", selectedTag);
+                console.log("🔍 Rollback button exists:", !!rollbackBtn);
+                console.log("🔍 Rollback button current state:", {
+                  disabled: rollbackBtn?.disabled,
+                  innerHTML: rollbackBtn?.innerHTML,
+                  style: rollbackBtn?.style.cssText,
+                });
+
+                if (selectedTag && rollbackBtn) {
+                  console.log("✅ Enabling rollback button");
+                  rollbackBtn.disabled = false;
+                  rollbackBtn.style.opacity = "0.9";
+                  rollbackBtn.style.cursor = "pointer";
+                  rollbackBtn.style.background =
+                    "linear-gradient(135deg, #f87171 0%, #ef4444 100%)";
+                  rollbackBtn.style.borderColor = "rgba(255, 255, 255, 0.2)";
+                  rollbackBtn.style.color = "#ffffff";
+                  rollbackBtn.style.filter = "none";
+                  rollbackBtn.style.boxShadow =
+                    "0 4px 12px rgba(239, 68, 68, 0.2), 0 2px 4px rgba(0, 0, 0, 0.1)";
+                  console.log("✅ Rollback button enabled successfully");
+                } else {
+                  console.log(
+                    "❌ Disabling rollback button, selectedTag:",
+                    selectedTag,
+                    "rollbackBtn exists:",
+                    !!rollbackBtn
+                  );
+                  if (rollbackBtn) {
+                    rollbackBtn.disabled = true;
+                    rollbackBtn.style.opacity = "0.6";
+                    rollbackBtn.style.cursor = "not-allowed";
+                    rollbackBtn.style.background =
+                      "linear-gradient(135deg, #475569 0%, #64748b 100%)";
+                    rollbackBtn.style.borderColor = "rgba(255, 255, 255, 0.2)";
+                    rollbackBtn.style.color = "#e2e8f0";
+                    rollbackBtn.style.filter = "none";
+                    rollbackBtn.style.boxShadow =
+                      "0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 2px rgba(255, 255, 255, 0.1)";
+                  }
+                }
+              });
+              console.log("✅ Version change listener added successfully");
+
+              // Also setup rollback button click handler here
+              console.log("🔧 Setting up rollback button click handler...");
+              if (rollbackBtn) {
+                rollbackBtn.addEventListener("click", async function (event) {
+                  console.log("🚀 Rollback button clicked!");
+                  console.log("🔍 Button state at click:", {
+                    disabled: this.disabled,
+                    innerHTML: this.innerHTML,
+                    event: event,
+                  });
+
+                  // Prevent multiple clicks and check if button is disabled
+                  if (this.disabled) {
+                    console.log("❌ Button is disabled, ignoring click");
+                    return;
+                  }
+
+                  const versionSelectElement =
+                    document.getElementById("version-select");
+                  const selectedTag = versionSelectElement?.value;
+                  console.log("📋 Selected tag:", selectedTag);
+                  console.log(
+                    "🔍 Version select element found:",
+                    !!versionSelectElement
+                  );
+
+                  if (!selectedTag || selectedTag === "") {
+                    console.log("❌ No tag selected, showing alert");
+                    alert("Please select a version first");
+                    return;
+                  }
+
+                  console.log("💭 Showing confirmation dialog...");
+                  if (
+                    !confirm(
+                      `Are you sure you want to rollback to ${selectedTag}?\n\nThis will:\n- Reset the current state to that version\n- Force push changes to the repository\n- Reload the page\n\nThis action cannot be undone.`
+                    )
+                  ) {
+                    console.log("❌ User cancelled rollback");
+                    return;
+                  }
+
+                  console.log("🔄 Starting rollback process...");
+                  // Disable button and show loading state
+                  this.disabled = true;
+                  this.innerHTML = "↺ Rolling back...";
+                  this.style.cursor = "not-allowed";
+                  this.style.opacity = "0.6";
+
+                  try {
+                    console.log("📡 Sending rollback request...");
+                    const response = await fetch("/api/rollback", {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({ tag: selectedTag }),
+                    });
+
+                    console.log(
+                      "📨 Rollback response status:",
+                      response.status
+                    );
+
+                    if (!response.ok) {
+                      throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    console.log("✅ Rollback response data:", data);
+
+                    if (data.success) {
+                      console.log("🎉 Rollback successful!");
+                      alert(
+                        `✅ Successfully rolled back to ${selectedTag}!\n\nThe page will now reload to show the changes.`
+                      );
+                      // Clear any stored admin state since we've rolled back
+                      localStorage.removeItem("admin_edit_count");
+                      // Force a hard refresh to bypass cache and show rollback changes
+                      setTimeout(() => {
+                        // Multiple methods to ensure fresh content loads
+                        // Method 1: Add cache-busting parameter
+                        const url = new URL(window.location);
+                        url.searchParams.set("_t", Date.now());
+                        window.location.href = url.toString();
+                      }, 500);
+                    } else {
+                      console.error("❌ Rollback failed:", data.error);
+                      alert(
+                        `❌ Rollback failed: ${
+                          data.error || data.message || "Unknown error"
+                        }`
+                      );
+                    }
+                  } catch (error) {
+                    console.error("❌ Rollback network/parse error:", error);
+                    alert(
+                      `❌ Rollback failed: ${error.message || "Network error"}`
+                    );
+                  } finally {
+                    // Reset button state
+                    this.disabled = false;
+                    this.innerHTML = "↺ Rollback";
+                    this.style.cursor = "pointer";
+                    this.style.opacity = "1";
+                    console.log("🔄 Button state reset");
+                  }
+                });
+                console.log(
+                  "✅ Rollback button click handler added successfully"
+                );
+              } else {
+                console.error(
+                  "❌ Could not setup rollback button click handler - button not found"
+                );
+              }
+            } else {
+              console.error(
+                "❌ Could not setup version change listener - elements not found"
+              );
+            }
+          }, 100);
+        });
+
+        // Function to show admin UI elements
+        window.showAdminUI = function () {
+          console.log("🔧 Showing admin UI elements...");
+          const logoutBtn = document.getElementById("admin-logout-button");
+          const editBtn = document.getElementById("admin-toolbar-button");
+          const uploadBtn = document.getElementById("btn-upload-image");
+          const versionDropdown = document.getElementById("version-history-dropdown");
+          
+          if (logoutBtn) logoutBtn.style.display = "flex";
+          if (editBtn) editBtn.style.display = "flex";
+          if (uploadBtn) uploadBtn.style.display = "flex";
+          if (versionDropdown) versionDropdown.style.display = "flex";
+          
+          console.log("✅ Admin UI elements are now visible");
+        };
+
+        // Function to show save changes button when toolbar is opened
+        window.showSaveChangesButton = function () {
+          console.log("💾 Showing save changes button...");
+          const dockSaveButton = document.getElementById(
+            "admin-save-changes-button"
+          );
+          if (dockSaveButton) {
+            dockSaveButton.style.display = "flex";
+          }
+        };
+
+        // Function to hide save changes button when toolbar is closed
+        window.hideSaveChangesButton = function () {
+          console.log("💾 Hiding save changes button...");
+          const dockSaveButton = document.getElementById(
+            "admin-save-changes-button"
+          );
+          if (dockSaveButton) {
+            dockSaveButton.style.display = "none";
+          }
+        };
+
+        // Function to show undo button when toolbar is opened
+        window.showUndoButton = function () {
+          console.log("↶ Showing undo button...");
+          const dockUndoButton = document.getElementById("admin-undo-button");
+          if (dockUndoButton) {
+            dockUndoButton.style.display = "flex";
+          }
+        };
+
+        // Function to hide undo button when toolbar is closed
+        window.hideUndoButton = function () {
+          console.log("↶ Hiding undo button...");
+          const dockUndoButton = document.getElementById("admin-undo-button");
+          if (dockUndoButton) {
+            dockUndoButton.style.display = "none";
+          }
+        };
+
+        // Edit counter with persistent state
+        const EDIT_COUNT_KEY = "admin_edit_count";
+        window.editCount = parseInt(localStorage.getItem(EDIT_COUNT_KEY)) || 0;
+        console.log(`📊 Restored edit count from storage: ${window.editCount}`);
+
+        // Function to update save changes button with edit count
+        window.updateSaveChangesButton = function () {
+          const dockSaveButton = document.getElementById(
+            "admin-save-changes-button"
+          );
+          const dockUndoButton = document.getElementById("admin-undo-button");
+
+          if (window.editCount > 0) {
+            console.log(
+              `💾 Updating dock save changes button with ${window.editCount} edits...`
+            );
+
+            // Make dock buttons visible and enabled
+            if (dockSaveButton) {
+              dockSaveButton.style.display = "flex";
+              dockSaveButton.disabled = false;
+              dockSaveButton.style.cursor = "pointer";
+              dockSaveButton.style.opacity = "1";
+              dockSaveButton.setAttribute(
+                "data-tooltip",
+                `Save Changes (${window.editCount})`
+              );
+            }
+
+            // Also make undo button visible and enabled
+            if (dockUndoButton) {
+              dockUndoButton.style.display = "flex";
+              dockUndoButton.disabled = false;
+              dockUndoButton.style.cursor = "pointer";
+              dockUndoButton.style.opacity = "1";
+            }
+          } else {
+            console.log("💾 Resetting dock save changes button...");
+
+            // Hide and disable dock buttons
+            if (dockSaveButton) {
+              dockSaveButton.style.display = "none";
+              dockSaveButton.disabled = true;
+              dockSaveButton.style.cursor = "not-allowed";
+              dockSaveButton.style.opacity = "0.5";
+              dockSaveButton.setAttribute("data-tooltip", "Save Changes");
+            }
+
+            // Also hide and disable undo button
+            if (dockUndoButton) {
+              dockUndoButton.style.display = "none";
+              dockUndoButton.disabled = true;
+              dockUndoButton.style.cursor = "not-allowed";
+              dockUndoButton.style.opacity = "0.5";
+            }
+          }
+        };
+
+        // Function to increment edit count and update button
+        window.incrementEditCount = function () {
+          console.log("🚀 incrementEditCount called!");
+          window.editCount++;
+          localStorage.setItem(EDIT_COUNT_KEY, window.editCount.toString());
+          console.log(
+            `📝 Edit count incremented to: ${window.editCount} (saved to storage)`
+          );
+          console.log("🔄 About to call updateSaveChangesButton...");
+          window.updateSaveChangesButton();
+          console.log("✅ updateSaveChangesButton completed");
+        };
+
+        // Function to decrement edit count and update button
+        window.decrementEditCount = function () {
+          console.log("🚀 decrementEditCount called!");
+          if (window.editCount > 0) {
+            window.editCount--;
+            localStorage.setItem(EDIT_COUNT_KEY, window.editCount.toString());
+            console.log(
+              `📝 Edit count decremented to: ${window.editCount} (saved to storage)`
+            );
+            console.log("🔄 About to call updateSaveChangesButton...");
+            window.updateSaveChangesButton();
+            console.log("✅ updateSaveChangesButton completed");
+          } else {
+            console.log("⚠️ Edit count already at 0, cannot decrement");
+          }
+        };
+
+        // Function to reset edit count
+        window.resetEditCount = function () {
+          window.editCount = 0;
+          localStorage.setItem(EDIT_COUNT_KEY, "0");
+          console.log("🔄 Edit count reset to 0 (saved to storage)");
+          window.updateSaveChangesButton();
+        };
+
+        // Function to enable save changes button when edits are made (legacy support)
+        window.enableSaveChangesButton = function () {
+          window.incrementEditCount();
+        };
+
+        // Function to disable save changes button (legacy support)
+        window.disableSaveChangesButton = function () {
+          window.resetEditCount();
+        };
+
+        // Show admin button and version controls if authenticated
+        if (window.isAuthenticated) {
+          window.showAdminUI();
+          // Initialize save/undo buttons based on stored edit count
+          console.log("🔄 Initializing save/undo buttons on page load...");
+          window.updateSaveChangesButton();
+        }
+
+        // Initialize buttons based on stored state after toolbar loads
+        setTimeout(() => {
+          console.log("🔄 Final initialization of save/undo buttons...");
+          window.updateSaveChangesButton();
+        }, 100);
+
+        // Show welcome message
+        setTimeout(() => {
+          if (
+            window.adminToolbar &&
+            typeof window.adminToolbar.showStatus === "function"
+          ) {
+            console.log("📢 Showing welcome message...");
+            const editCountMsg =
+              window.editCount > 0
+                ? ` (${window.editCount} unsaved changes)`
+                : "";
+            window.adminToolbar.showStatus(
+              `Admin mode activated${editCountMsg}! Click "Edit" to start editing`,
+              "success"
+            );
+          } else {
+            console.log(
+              "ℹ️ Skipping welcome message - showStatus not available"
+            );
+          }
+        }, 1000);
+      }, 500); // Wait for toolbar initialization
+    };
+    toolbarScript.onerror = () => {
+      console.error(
+        "❌ Failed to load admin toolbar script from /admin-static/toolbar.js"
+      );
+    };
+
+    console.log("📤 Appending toolbar script to head...");
+    document.head.appendChild(toolbarScript);
+  };
+
+  if (isAdminMode) {
+    console.log("🔧 Admin mode detected - initializing toolbar...");
+    console.log("🔍 Current URL:", window.location.href);
+    console.log("🔍 Pathname:", window.location.pathname);
+    console.log("🔍 Already authenticated:", window.isAuthenticated);
+
     // Show authentication modal only if not already authenticated
     if (!window.isAuthenticated) {
-        showAuthModal();
+      showAuthModal();
     }
-    
+
     // Load when DOM is ready
-    if (document.readyState === 'loading') {
-        console.log('⏳ DOM still loading, waiting for DOMContentLoaded...');
-        document.addEventListener('DOMContentLoaded', loadAdminToolbar);
+    if (document.readyState === "loading") {
+      console.log("⏳ DOM still loading, waiting for DOMContentLoaded...");
+      document.addEventListener("DOMContentLoaded", loadAdminToolbar);
     } else {
-        console.log('✅ DOM ready, loading toolbar immediately...');
-        loadAdminToolbar();
+      console.log("✅ DOM ready, loading toolbar immediately...");
+      loadAdminToolbar();
     }
-    
+
     // Clean admin mode - no visual clutter, just the edit button
-} else {
-    console.log('ℹ️ Regular viewing mode - no admin features loaded');
-    console.log('🔍 Current pathname:', window.location.pathname);
-    console.log('🔍 Search params:', window.location.search);
-}
+  } else {
+    console.log("ℹ️ Regular viewing mode - no admin features loaded");
+    console.log("🔍 Current pathname:", window.location.pathname);
+    console.log("🔍 Search params:", window.location.search);
+  }
 </script>

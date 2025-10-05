@@ -580,6 +580,448 @@ def get_file_content():
 
 
 
+# 🟠 Image Upload, Replace, Delete +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+@app.route("/api/upload-image", methods=["POST"])
+def upload_image():
+    """Upload an image to the project's images directory"""
+    try:
+        # Check if file is in the request
+        if 'image' not in request.files:
+            return jsonify({"success": False, "error": "No image file provided"}), 400
+
+        file = request.files['image']
+        project_path_str = request.form.get('project_path', '')
+
+        if not project_path_str:
+            return jsonify({"success": False, "error": "Project path required"}), 400
+
+        if file.filename == '':
+            return jsonify({"success": False, "error": "No file selected"}), 400
+
+        # Validate file type
+        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'}
+        file_ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+
+        if file_ext not in allowed_extensions:
+            return jsonify({"success": False, "error": f"Invalid file type. Allowed: {', '.join(allowed_extensions)}"}), 400
+
+        # Validate project path
+        try:
+            project_path = Path(project_path_str)
+
+            # Security check - ensure path is within projects directory
+            if not str(project_path).startswith(str(PROJECTS_DIR)):
+                return jsonify({"success": False, "error": "Invalid project path"}), 403
+
+            if not project_path.exists():
+                return jsonify({"success": False, "error": "Project path not found"}), 404
+
+        except Exception as e:
+            return jsonify({"success": False, "error": f"Invalid path: {str(e)}"}), 400
+
+        # Create images directory if it doesn't exist
+        images_dir = project_path / "images"
+        images_dir.mkdir(exist_ok=True)
+
+        # Generate safe filename
+        import re
+        safe_filename = re.sub(r'[^\w\-_\.]', '_', file.filename)
+
+        # Check if file already exists and append number if needed
+        file_path = images_dir / safe_filename
+        counter = 1
+        base_name = safe_filename.rsplit('.', 1)[0]
+        extension = safe_filename.rsplit('.', 1)[1]
+
+        while file_path.exists():
+            safe_filename = f"{base_name}_{counter}.{extension}"
+            file_path = images_dir / safe_filename
+            counter += 1
+
+        # Save the file
+        file.save(str(file_path))
+
+        # Generate relative URL for the image
+        relative_path = f"images/{safe_filename}"
+
+        logger.info(f"Image uploaded successfully: {file_path}")
+
+        return jsonify({
+            "success": True,
+            "message": f"Image uploaded successfully as {safe_filename}",
+            "filename": safe_filename,
+            "path": relative_path,
+            "full_path": str(file_path)
+        })
+
+    except Exception as e:
+        logger.exception("upload_image error")
+        return jsonify({"success": False, "error": f"Upload failed: {str(e)}"}), 500
+
+
+@app.route("/api/replace-image", methods=["POST"])
+def replace_image():
+    """Replace an existing image in the HTML file"""
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        url = data.get("url", "")
+        old_image_src = data.get("oldImageSrc", "")
+        new_image_src = data.get("newImageSrc", "")
+        element_selector = data.get("elementSelector", "")
+
+        if not (url and old_image_src and new_image_src):
+            return jsonify({"success": False, "error": "Missing url, oldImageSrc, or newImageSrc"}), 400
+
+        parts = url.strip("/").split("/")
+        logger.info(f"Replace image - URL: {url}, Parts: {parts}")
+
+        # Handle both formats: /user_xxx/project and /project
+        if len(parts) >= 2 and parts[0].startswith("user_"):
+            user_dir = parts[0]
+            project_dir = parts[1]
+            project_path = safe_join_projects(f"{user_dir}/{project_dir}")
+        elif len(parts) >= 1 and parts[0]:
+            project_dir = parts[0]
+            project_path = safe_join_projects(project_dir)
+        else:
+            return jsonify({"success": False, "error": "Cannot determine project path from URL"}), 400
+
+        # Determine HTML file
+        if parts[-1].endswith(".html"):
+            html_file_path = project_path / parts[-1]
+        else:
+            html_file_path = project_path / "index.html"
+
+        if not html_file_path.exists():
+            return jsonify({"success": False, "error": f"HTML file not found: {html_file_path}"}), 404
+
+        # Read HTML content
+        html = html_file_path.read_text(encoding="utf-8")
+
+        # Replace the image src in the HTML
+        # Support multiple formats: src="path", src='path', src=path
+        import re
+
+        # Escape special regex characters in the old path
+        escaped_old_src = re.escape(old_image_src)
+
+        # Pattern to match src attribute with the old image path
+        patterns = [
+            f'src=["\']?{escaped_old_src}["\']?',
+            f'src="{escaped_old_src}"',
+            f"src='{escaped_old_src}'",
+        ]
+
+        replacement_found = False
+        for pattern in patterns:
+            if re.search(pattern, html):
+                html = re.sub(pattern, f'src="{new_image_src}"', html)
+                replacement_found = True
+                break
+
+        if not replacement_found:
+            return jsonify({"success": False, "error": f"Image source '{old_image_src}' not found in HTML"}), 404
+
+        # Write updated HTML
+        html_file_path.write_text(html, encoding="utf-8")
+
+        logger.info(f"Image replaced in {html_file_path}: {old_image_src} -> {new_image_src}")
+
+        return jsonify({
+            "success": True,
+            "message": f"Image replaced in {html_file_path.name}",
+            "file_path": str(html_file_path),
+            "old_src": old_image_src,
+            "new_src": new_image_src
+        })
+
+    except Exception as e:
+        logger.exception("replace_image error")
+        return jsonify({"success": False, "error": f"Internal error: {e}"}), 500
+
+
+@app.route("/api/delete-image", methods=["POST"])
+def delete_image():
+    """Delete an image from the HTML file"""
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        url = data.get("url", "")
+        image_src = data.get("imageSrc", "")
+        element_selector = data.get("elementSelector", "")
+
+        if not (url and image_src):
+            return jsonify({"success": False, "error": "Missing url or imageSrc"}), 400
+
+        parts = url.strip("/").split("/")
+        logger.info(f"Delete image - URL: {url}, Parts: {parts}")
+
+        # Handle both formats: /user_xxx/project and /project
+        if len(parts) >= 2 and parts[0].startswith("user_"):
+            user_dir = parts[0]
+            project_dir = parts[1]
+            project_path = safe_join_projects(f"{user_dir}/{project_dir}")
+        elif len(parts) >= 1 and parts[0]:
+            project_dir = parts[0]
+            project_path = safe_join_projects(project_dir)
+        else:
+            return jsonify({"success": False, "error": "Cannot determine project path from URL"}), 400
+
+        # Determine HTML file
+        if parts[-1].endswith(".html"):
+            html_file_path = project_path / parts[-1]
+        else:
+            html_file_path = project_path / "index.html"
+
+        if not html_file_path.exists():
+            return jsonify({"success": False, "error": f"HTML file not found: {html_file_path}"}), 404
+
+        # Read HTML content
+        html = html_file_path.read_text(encoding="utf-8")
+
+        # Find and remove the img tag with this src
+        import re
+
+        # Escape special regex characters in the image src
+        escaped_src = re.escape(image_src)
+
+        # Pattern to match the entire img tag with this src
+        # This pattern handles various formats of img tags
+        patterns = [
+            rf'<img[^>]*src=["\']?{escaped_src}["\']?[^>]*>',
+            rf'<img[^>]*src="{escaped_src}"[^>]*>',
+            rf'<img[^>]*src=\'{escaped_src}\'[^>]*>',
+        ]
+
+        deletion_found = False
+        original_html = html
+
+        for pattern in patterns:
+            matches = list(re.finditer(pattern, html, re.IGNORECASE))
+            if matches:
+                # Remove all matching img tags
+                html = re.sub(pattern, '', html, flags=re.IGNORECASE)
+                deletion_found = True
+                logger.info(f"Found and removed {len(matches)} img tag(s) with pattern: {pattern}")
+                break
+
+        if not deletion_found:
+            return jsonify({"success": False, "error": f"Image tag with source '{image_src}' not found in HTML"}), 404
+
+        # Write updated HTML
+        html_file_path.write_text(html, encoding="utf-8")
+
+        logger.info(f"Image deleted from {html_file_path}: {image_src}")
+
+        return jsonify({
+            "success": True,
+            "message": f"Image deleted from {html_file_path.name}",
+            "file_path": str(html_file_path),
+            "deleted_src": image_src
+        })
+
+    except Exception as e:
+        logger.exception("delete_image error")
+        return jsonify({"success": False, "error": f"Internal error: {e}"}), 500
+
+
+# 🟠 Image Upload, Replace, Delete +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+@app.route("/api/save-element-position", methods=["POST"])
+def save_element_position():
+    """Save element position to HTML file"""
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        url = data.get("url", "")
+        element_selector = data.get("elementSelector", "")
+        position = data.get("position", {})
+        element_tag = data.get("elementTag", "")
+        element_id = data.get("elementId", "")
+        element_classes = data.get("elementClasses", "")
+
+        if not (url and position):
+            return jsonify({"success": False, "error": "Missing url or position"}), 400
+
+        parts = url.strip("/").split("/")
+        logger.info(f"Save element position - URL: {url}, Parts: {parts}")
+
+        # Handle both formats: /user_xxx/project and /project
+        if len(parts) >= 2 and parts[0].startswith("user_"):
+            user_dir = parts[0]
+            project_dir = parts[1]
+            project_path = safe_join_projects(f"{user_dir}/{project_dir}")
+        elif len(parts) >= 1 and parts[0]:
+            project_dir = parts[0]
+            project_path = safe_join_projects(project_dir)
+        else:
+            return jsonify({"success": False, "error": "Cannot determine project path from URL"}), 400
+
+        # Determine HTML file
+        if parts[-1].endswith(".html"):
+            html_file_path = project_path / parts[-1]
+        else:
+            html_file_path = project_path / "index.html"
+
+        if not html_file_path.exists():
+            return jsonify({"success": False, "error": f"HTML file not found: {html_file_path}"}), 404
+
+        # Read HTML content
+        html = html_file_path.read_text(encoding="utf-8")
+
+        # Build style string from position data
+        style_additions = []
+        if position.get('position'):
+            style_additions.append(f"position: {position['position']}")
+        if position.get('left'):
+            style_additions.append(f"left: {position['left']}")
+        if position.get('top'):
+            style_additions.append(f"top: {position['top']}")
+        if position.get('zIndex'):
+            style_additions.append(f"z-index: {position['zIndex']}")
+
+        style_string = "; ".join(style_additions)
+
+        # Find the element in HTML and update its style attribute
+        import re
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(html, 'html.parser')
+
+        # Try to find element by ID first
+        target_element = None
+        if element_id:
+            target_element = soup.find(id=element_id)
+
+        # If not found by ID, try by tag and classes
+        if not target_element and element_classes:
+            class_list = element_classes.split()
+            target_element = soup.find(element_tag, class_=class_list)
+
+        # If still not found, try just by tag
+        if not target_element:
+            target_element = soup.find(element_tag)
+
+        if not target_element:
+            return jsonify({"success": False, "error": f"Could not find element with selector: {element_selector}"}), 404
+
+        # Update or add style attribute
+        existing_style = target_element.get('style', '')
+
+        # Remove any existing position-related styles
+        if existing_style:
+            # Parse existing styles
+            style_dict = {}
+            for style_item in existing_style.split(';'):
+                style_item = style_item.strip()
+                if ':' in style_item:
+                    key, value = style_item.split(':', 1)
+                    key = key.strip().lower()
+                    # Skip position-related styles as we'll add them fresh
+                    if key not in ['position', 'left', 'top', 'z-index']:
+                        style_dict[key] = value.strip()
+
+            # Add new position styles
+            for style_item in style_additions:
+                key, value = style_item.split(':', 1)
+                style_dict[key.strip()] = value.strip()
+
+            # Rebuild style string
+            new_style = '; '.join([f"{k}: {v}" for k, v in style_dict.items()])
+        else:
+            new_style = style_string
+
+        target_element['style'] = new_style
+
+        # Write updated HTML
+        updated_html = str(soup)
+        html_file_path.write_text(updated_html, encoding="utf-8")
+
+        logger.info(f"Element position saved in {html_file_path}")
+
+        return jsonify({
+            "success": True,
+            "message": f"Position saved to {html_file_path.name}",
+            "file_path": str(html_file_path),
+            "style": new_style
+        })
+
+    except Exception as e:
+        logger.exception("save_element_position error")
+        return jsonify({"success": False, "error": f"Internal error: {e}"}), 500
+
+
+@app.route("/api/save-image-to-html", methods=["POST"])
+def save_image_to_html():
+    """Save image HTML to the actual HTML file"""
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        url = data.get("url", "")
+        image_html = data.get("imageHTML", "")
+        target_selector = data.get("targetSelector", "body")
+        insertion_method = data.get("insertionMethod", "append")
+
+        if not (url and image_html):
+            return jsonify({"success": False, "error": "Missing url or imageHTML"}), 400
+
+        parts = url.strip("/").split("/")
+        logger.info(f"Save image to HTML - URL: {url}, Parts: {parts}")
+
+        # Handle both formats: /user_xxx/project and /project
+        if len(parts) >= 2 and parts[0].startswith("user_"):
+            user_dir = parts[0]
+            project_dir = parts[1]
+            project_path = safe_join_projects(f"{user_dir}/{project_dir}")
+        elif len(parts) >= 1 and parts[0]:
+            project_dir = parts[0]
+            project_path = safe_join_projects(project_dir)
+        else:
+            return jsonify({"success": False, "error": "Cannot determine project path from URL"}), 400
+
+        # Determine HTML file
+        if parts[-1].endswith(".html"):
+            html_file_path = project_path / parts[-1]
+        else:
+            html_file_path = project_path / "index.html"
+
+        if not html_file_path.exists():
+            return jsonify({"success": False, "error": f"HTML file not found: {html_file_path}"}), 404
+
+        # Read HTML content
+        html = html_file_path.read_text(encoding="utf-8")
+
+        # Insert image HTML based on method
+        if insertion_method == "append":
+            # Append before closing body tag
+            if "</body>" in html:
+                html = html.replace("</body>", f"{image_html}\n</body>")
+            else:
+                # Fallback: append before closing html tag
+                html = html.replace("</html>", f"{image_html}\n</html>")
+        elif insertion_method == "prepend":
+            # Prepend after opening body tag
+            if "<body>" in html:
+                html = html.replace("<body>", f"<body>\n{image_html}")
+            else:
+                # Fallback: prepend after opening html tag
+                html = html.replace("<html>", f"<html>\n{image_html}")
+
+        # Write updated HTML
+        html_file_path.write_text(html, encoding="utf-8")
+
+        logger.info(f"Image HTML saved to {html_file_path}")
+
+        return jsonify({
+            "success": True,
+            "message": f"Image saved to {html_file_path.name}",
+            "file_path": str(html_file_path)
+        })
+
+    except Exception as e:
+        logger.exception("save_image_to_html error")
+        return jsonify({"success": False, "error": f"Internal error: {e}"}), 500
+
+
 
 
 
@@ -1192,10 +1634,21 @@ def save_ai_changes():
 
 @app.route("/admin-static/<path:filename>")
 def admin_static(filename):
+    # First try the toolbar directory
     admin_static_dir = BASE_DIR / "admin" / "toolbar"
-    if not admin_static_dir.exists():
-        return "Admin static directory not found", 404
-    return send_from_directory(str(admin_static_dir), filename)
+    if admin_static_dir.exists():
+        file_path = admin_static_dir / filename
+        if file_path.exists():
+            return send_from_directory(str(admin_static_dir), filename)
+    
+    # Then try the components directory
+    admin_components_dir = BASE_DIR / "admin" / "components"
+    if admin_components_dir.exists():
+        file_path = admin_components_dir / filename
+        if file_path.exists():
+            return send_from_directory(str(admin_components_dir), filename)
+    
+    return "Admin static file not found", 404
 
 
 

@@ -4,684 +4,1392 @@
  */
 
 class AdminToolbar {
-    constructor() {
-        this.isVisible = false;
-        this.selectedElements = [];
-        this.editingIndex = -1;
-        this.isSelecting = false;
-        this.highlightedElement = null;
-        this.state = 'idle'; // idle, selecting, loading, success, error
-        this.init();
-    }
-    
-    init() {
-        this.createToolbar();
-        this.createTopDiv();
-        this.attachEvents();
-        this.hide(); // Hide toolbar by default
-        console.log('🔧 Simple Admin Toolbar ready');
-    }
-    
-    createTopDiv() {
-        // Remove existing top div
-        const existingDiv = document.getElementById('admin-top-div');
-        if (existingDiv) existingDiv.remove();
-        
-        // Create top div
-        this.topDiv = document.createElement('div');
-        this.topDiv.id = 'admin-top-div';
-        this.topDiv.className = 'admin-top-div';
-        document.body.appendChild(this.topDiv);
-        console.log('✅ Top div created');
-    }
-    
-    
-    createToolbar() {
-        // Remove existing
-        const existing = document.getElementById('admin-toolbar');
-        if (existing) existing.remove();
-        
-        
-        this.container = document.createElement('div');
-        this.container.id = 'admin-toolbar';
-        this.container.className = 'admin-toolbar-popup';
-        this.container.innerHTML = `
-            <div class="toolbar-popup-content">
-                <!-- Close Button -->
-                <button id="close-btn" class="close-btn">✖</button>
-                
-                <!-- Edit Mode Toggle -->
-                <div class="edit-mode-section" id="edit-mode-section" style="display: none;">
-                    <div class="edit-mode-toggle">
-                        <button class="toggle-btn active" id="text-mode-btn" data-mode="text">
-                            ✏️ Text Edit
-                        </button>
-                        <button class="toggle-btn" id="ai-mode-btn" data-mode="ai">
-                            ✨ AI Edit
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Text Editing Section -->
-                <div class="text-editing-section" id="text-editing-section" style="display: none;">
-                    <div class="text-edit-actions">
-                        <button class="text-edit-btn save-btn" id="save-text-btn">
-                            save
-                        </button>
-                        <button class="text-edit-btn cancel-btn" id="cancel-text-btn">
-                            cancel
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- AI Edit Section -->
-                <div class="ai-edit-section" id="ai-edit-section" style="display: none;">
-                    <div class="batch-edit-options">
-                        <label class="batch-checkbox">
-                            <input type="checkbox" id="batch-edit-mode" />
-                            <span class="checkmark"></span>
-                            Apply the same edit instruction to all selected elements
-                        </label>
+  constructor() {
+    this.isVisible = false;
+    this.selectedElements = [];
+    this.editingIndex = -1;
+    this.isSelecting = false;
+    this.highlightedElement = null;
+    this.state = "idle"; // idle, selecting, loading, success, error
+    this.init();
+  }
 
-                    </div>
-                    <textarea 
-                        id="prompt-input" 
-                        class="edit-input"
-                        placeholder="Describe the changes you want AI to make..."
-                        rows="3"
-                    ></textarea>
-                    <div class="ai-edit-actions">
-                        <button class="edit-submit-btn" id="submit-prompt">
-                            Apply AI Changes
-                        </button>
-                        <button class="text-edit-btn cancel-btn" id="cancel-ai-btn">
-                            cancel
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Element Selection -->
-                <div class="toolbar-actions">
-                    <button class="toolbar-btn select-btn" id="btn-toggle-select">
-                        Start Selecting
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        this.injectStyles();
-        document.body.appendChild(this.container);
-        
-        // Get references
-        this.editModeSection = document.getElementById('edit-mode-section');
-        this.textEditingSection = document.getElementById('text-editing-section');
-        this.aiEditSection = document.getElementById('ai-edit-section');
-        this.promptInput = document.getElementById('prompt-input');
-        this.selectBtn = document.getElementById('btn-toggle-select');
-        this.textModeBtn = document.getElementById('text-mode-btn');
-        this.aiModeBtn = document.getElementById('ai-mode-btn');
-        this.saveTextBtn = document.getElementById('save-text-btn');
-        this.cancelTextBtn = document.getElementById('cancel-text-btn');
-        this.cancelAiBtn = document.getElementById('cancel-ai-btn');
-        this.submitPromptBtn = document.getElementById('submit-prompt');
-        this.closeBtn = document.getElementById('close-btn');
+  init() {
+    this.createToolbar();
+    this.createTopDiv();
+    this.attachEvents();
+    this.hide(); // Hide toolbar by default
+    console.log("🔧 Simple Admin Toolbar ready");
+  }
 
-        this.batchEditCheckbox = document.getElementById('batch-edit-mode');
-        this.currentEditMode = 'text'; // Default to text edit mode
-        this.hasUnsavedEdits = false;
-    }
+  createTopDiv() {
+    // Remove existing top div
+    const existingDiv = document.getElementById("admin-top-div");
+    if (existingDiv) existingDiv.remove();
+
+    // Create top div with floating dock design
+    this.topDiv = document.createElement("div");
+    this.topDiv.id = "admin-top-div";
+    this.topDiv.className = "admin-top-div";
     
+    // Add floating dock content with all admin buttons
+    this.topDiv.innerHTML = `
+     
+      
+      <button id="btn-upload-image" data-tooltip="Upload Image">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
+          <circle cx="12" cy="13" r="3"/>
+        </svg>
+      </button>
+      
+      <button id="text-mode-btn" data-tooltip="Text Mode" style="display: none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14,2 14,8 20,8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+          <polyline points="10,9 9,9 8,9"/>
+        </svg>
+      </button>
+      
+      <button id="ai-mode-btn" data-tooltip="AI Mode" style="display: none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+      </button>
+      
+      <button id="save-text-btn" data-tooltip="Save Changes" style="display: none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+          <polyline points="17,21 17,13 7,13 7,21"/>
+          <polyline points="7,3 7,8 15,8"/>
+        </svg>
+      </button>
+      
+      <button id="cancel-text-btn" data-tooltip="Cancel" style="display: none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+      
+      <button id="submit-prompt" data-tooltip="Apply AI Changes" style="display: none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20,6 9,17 4,12"/>
+        </svg>
+      </button>
+      
+      <button id="cancel-ai-btn" data-tooltip="Cancel AI" style="display: none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+      
+      <button id="close-btn" data-tooltip="Close" style="display: none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+      
+      <button id="admin-logout-button" data-tooltip="Logout">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16,17 21,12 16,7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </button>
+      
+      <button id="admin-toolbar-button" data-tooltip="Edit">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 20h9"/>
+          <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+        </svg>
+      </button>
+      
+      <button id="admin-save-changes-button" data-tooltip="Save Changes" style="background: #22c55e; display: none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+          <polyline points="9,9 9,9 9,9"/>
+          <path d="M15 3v6h6"/>
+        </svg>
+      </button>
+      
+      <button id="admin-undo-button" data-tooltip="Undo" style="background: #f59e0b; display: none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 7v6h6"/>
+          <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>
+        </svg>
+      </button>
+      
+      <input type="file" id="image-upload-input" accept="image/*" style="display: none;">
+      <input type="file" id="image-replace-input" accept="image/*" style="display: none;">
+    `;
     
-    attachEvents() {
-        this.selectBtn.addEventListener('click', () => this.startEditing());
-        this.textModeBtn.addEventListener('click', () => this.setEditMode('text'));
-        this.aiModeBtn.addEventListener('click', () => this.setEditMode('ai'));
-        this.saveTextBtn.addEventListener('click', () => this.saveTextToFile());
-        this.cancelTextBtn.addEventListener('click', () => this.cancelTextEdit());
-        this.cancelAiBtn.addEventListener('click', () => this.cancelAiEdit());
-        this.submitPromptBtn.addEventListener('click', () => this.submitPrompt());
-        this.closeBtn.addEventListener('click', () => this.hide());
-        
-        // Keyboard shortcuts
-        this.promptInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                this.submitPrompt();
-            }
+    document.body.appendChild(this.topDiv);
+    
+    // Add logout and upload functionality to the dock buttons
+    setTimeout(() => {
+      // Logout button functionality
+      const logoutBtn = this.topDiv.querySelector('#admin-logout-button');
+      if (logoutBtn && window.logoutAdmin) {
+        logoutBtn.addEventListener('click', () => {
+          console.log('🚪 Logout button clicked from dock!');
+          window.logoutAdmin();
+        });
+        console.log("✅ Added logout functionality to dock button");
+      }
+      
+      // Upload button functionality
+      const uploadBtn = this.topDiv.querySelector('#btn-upload-image');
+      const uploadInput = this.topDiv.querySelector('#image-upload-input');
+      if (uploadBtn && uploadInput) {
+        uploadBtn.addEventListener('click', () => {
+          console.log('📷 Upload image button clicked from dock!');
+          uploadInput.click();
         });
         
-        // Click outside to close
-        document.addEventListener('click', (e) => {
-            if (this.isVisible && !this.container.contains(e.target) && !this.isUIElement(e.target)) {
-                this.hide();
-            }
+        // Add event listener for file selection
+        uploadInput.addEventListener('change', (e) => {
+          console.log('📷 File selected for upload!');
+          this.handleImageUpload(e);
         });
-    }
-    
-    show() {
-        this.isVisible = true;
-        this.container.style.display = 'block';
-        this.container.classList.add('visible');
-        this.setState('idle');
         
-        // If we have selected elements, restore the editing interface
-        if (this.selectedElements.length > 0) {
-            this.renderSelected();
-            
-            // If we were in the middle of editing, restore the text editing mode
-            if (this.editingIndex >= 0) {
-                this.editElement(this.editingIndex);
-            }
-        }
-        
-        // Show save changes button when toolbar opens and ensure it's properly initialized
-        if (window.showSaveChangesButton) {
-            window.showSaveChangesButton();
-        }
-        if (window.showUndoButton) {
-            window.showUndoButton();
-        }
-        if (window.updateSaveChangesButton) {
-            window.updateSaveChangesButton();
-        }
-        
-        console.log('✅ Toolbar shown - restored editing state');
-    }
-    
-    hide() {
-        this.isVisible = false;
-        this.container.style.display = 'none';
-        this.container.classList.remove('visible');
-        this.exitSelectMode();
-        this.setState('idle');
-        
-        // Don't clear selections when hiding toolbar - keep elements selected
-        // Don't clean up editable elements - preserve editing state
-        
-        // Hide save changes button when toolbar closes
-        if (window.hideSaveChangesButton) {
-            window.hideSaveChangesButton();
-        }
-        if (window.hideUndoButton) {
-            window.hideUndoButton();
-        }
-        
-        console.log('🔻 Toolbar hidden - selections and editing state preserved');
-    }
-    
-    startEditing() {
-        if (this.isSelecting) {
+        console.log("✅ Added upload functionality to dock button");
+      }
+      
+      // Edit button functionality - directly start selecting
+      const editBtn = this.topDiv.querySelector('#admin-toolbar-button');
+      if (editBtn) {
+        editBtn.addEventListener('click', () => {
+          console.log('✏️ Edit button clicked from dock!');
+          if (this.isSelecting) {
             this.exitSelectMode();
-        } else {
+            this.hide();
+          } else {
+            this.show();
             this.enterSelectMode();
-        }
-    }
-    
-    setEditMode(mode) {
-        this.currentEditMode = mode;
-        
-        // Update toggle button states
-        this.textModeBtn.classList.toggle('active', mode === 'text');
-        this.aiModeBtn.classList.toggle('active', mode === 'ai');
-        
-        // Show appropriate edit section
-        if (this.editingIndex >= 0) {
-            if (mode === 'text') {
-                this.textEditingSection.style.display = 'block';
-                this.aiEditSection.style.display = 'none';
-                
-                // Re-enable text editing mode with cursor
-                const elementInfo = this.selectedElements[this.editingIndex];
-                if (elementInfo && elementInfo.element) {
-                    this.makeElementEditable(elementInfo.element);
-                }
-            } else {
-                this.textEditingSection.style.display = 'none';
-                this.aiEditSection.style.display = 'block';
-                
-                // Disable contentEditable when switching to AI mode
-                const elementInfo = this.selectedElements[this.editingIndex];
-                if (elementInfo && elementInfo.element && this.cleanupEditableElement) {
-                    elementInfo.element.contentEditable = false;
-                    elementInfo.element.blur();
-                }
-                
-                this.promptInput.focus();
-            }
-        }
-    }
-    
-    toggleSelect() {
-        if (this.isSelecting) {
-            this.exitSelectMode();
-        } else {
-            this.enterSelectMode();
-        }
-    }
-    
-    enterSelectMode() {
-        this.isSelecting = true;
-        this.selectBtn.textContent = '⏹ Stop Selecting';
-        this.selectBtn.classList.add('active');
-        document.body.style.setProperty('cursor', 'crosshair', 'important');
-        document.body.classList.add('admin-selecting');
-        document.addEventListener('mouseover', this.handleHover.bind(this), true);
-        document.addEventListener('click', this.handleSelect.bind(this), true);
-        this.showStatus('Click on elements to select them for editing', 'info');
-        console.log('🎯 Selection mode ON - crosshair cursor should show');
-    }
-    
-    exitSelectMode() {
-        this.isSelecting = false;
-        this.selectBtn.textContent = 'Start Selecting';
-        this.selectBtn.classList.remove('active');
-        document.body.style.removeProperty('cursor');
-        document.body.classList.remove('admin-selecting');
-        document.removeEventListener('mouseover', this.handleHover, true);
-        document.removeEventListener('click', this.handleSelect, true);
-        this.clearHighlight();
-        console.log('🎯 Selection mode OFF - cursor restored');
-    }
-    
-    handleHover(e) {
-        if (!this.isSelecting || this.isUIElement(e.target)) return;
-        this.highlightElement(e.target);
-    }
-    
-    handleSelect(e) {
-        if (!this.isSelecting || this.isUIElement(e.target)) return;
-        e.preventDefault();
-        e.stopPropagation();
-        this.selectElement(e.target);
-        this.exitSelectMode();
-    }
-    
-    selectElement(element) {
-        // Check if already selected
-        if (this.selectedElements.find(el => el.element === element)) {
-            this.showStatus('Element already selected', 'error');
-            return;
-        }
-        
-        const elementInfo = {
-            element: element,
-            tag: element.tagName.toLowerCase(),
-            id: element.id || '',
-            classes: Array.from(element.classList).join(' '),
-            text: element.textContent?.trim() || '',
-            originalText: element.textContent?.trim() || '',
-            originalHTML: element.innerHTML, // Store original HTML structure
-            attributes: this.getElementAttributes(element)
-        };
-        
-        this.selectedElements.push(elementInfo);
-        this.renderSelected();
-        
-        // Add visual selection indicator
-        this.addSelectionBorder(element);
-        
-        // Position toolbar below the selected element
-        this.positionToolbarBelowElement(element);
-        
-        // Auto-open editing interface for the newly selected element
-        this.editElement(this.selectedElements.length - 1);
-        
-        this.showStatus('Element selected - use toggle to switch edit modes', 'success');
-        console.log('✅ Element selected:', elementInfo);
-    }
-    
-    
-    addSelectionBorder(element) {
-        // Add blue dashed border to selected element
-        element.style.setProperty('outline', '2px dashed #3b82f6', 'important');
-        element.style.setProperty('outline-offset', '2px', 'important');
-        element.classList.add('admin-selected-element');
-        console.log('✅ Added selection border to element:', element.tagName);
-    }
-    
-    removeSelectionBorder(element) {
-        // Remove selection border
-        element.style.removeProperty('outline');
-        element.style.removeProperty('outline-offset');
-        element.classList.remove('admin-selected-element');
-        console.log('🗑️ Removed selection border from element:', element.tagName);
-    }
-    
-    positionToolbarBelowElement(element) {
-        // Store reference to the element we're following
-        this.followingElement = element;
-        
-        // Update position immediately
-        this.updateToolbarPosition();
-        
-        // Add scroll listener to keep toolbar with element
-        this.scrollListener = () => this.updateToolbarPosition();
-        window.addEventListener('scroll', this.scrollListener);
-        window.addEventListener('resize', this.scrollListener);
-        
-        console.log('🎯 Toolbar now following selected element');
-    }
-    
-    updateToolbarPosition() {
-        if (!this.followingElement) return;
-        
-        const rect = this.followingElement.getBoundingClientRect();
-        const padding = 10;
-        
-        // Calculate position relative to the document
-        const left = rect.left + window.scrollX;
-        const top = rect.bottom + window.scrollY + padding;
-        
-        // Apply the position using absolute positioning
-        this.container.style.position = 'absolute';
-        this.container.style.left = left + 'px';
-        this.container.style.top = top + 'px';
-        this.container.style.right = 'auto';
-        this.container.style.bottom = 'auto';
-        
-        // Ensure high z-index to stay on top
-        this.container.style.zIndex = '99999';
-    }
-    
-    resetToolbarPosition() {
-        // Remove scroll listeners
-        if (this.scrollListener) {
-            window.removeEventListener('scroll', this.scrollListener);
-            window.removeEventListener('resize', this.scrollListener);
-            this.scrollListener = null;
-        }
-        
-        // Clear following element reference
-        this.followingElement = null;
-        
-        // Reset to default bottom-right position
-        this.container.style.position = 'fixed';
-        this.container.style.left = 'auto';
-        this.container.style.top = 'auto';
-        this.container.style.right = '20px';
-        this.container.style.bottom = '110px';
-        this.container.style.zIndex = '99999';
-        
-        console.log('🔄 Reset toolbar to default position');
-    }
-    
-    makeElementEditable(element) {
-        // Store original content for comparison
-        const elementInfo = this.selectedElements[this.editingIndex];
-        
-        // Check current state and set save button accordingly
-        const currentText = element.textContent?.trim() || '';
-        const originalText = elementInfo.originalText;
-        const hasChanges = currentText !== originalText;
-        this.updateSaveButtonState(hasChanges);
-        
-        // Clean up existing event listeners if any (but don't change contentEditable yet)
-        if (this.cleanupEditableElement) {
-            // Remove old listeners only
-            element.removeEventListener('input', this.currentCheckForChanges);
-            element.removeEventListener('keyup', this.currentCheckForChanges);
-        }
-        
-        // Make element editable and focus
-        element.contentEditable = true;
-        element.focus();
-        
-        // Move cursor to the end of the text
-        const range = document.createRange();
-        const selection = window.getSelection();
-        range.selectNodeContents(element);
-        range.collapse(false); // false = collapse to end
-        selection.removeAllRanges();
-        selection.addRange(range);
-        
-        // Monitor content changes
-        const checkForChanges = () => {
-            const currentText = element.textContent?.trim() || '';
-            const originalText = elementInfo.originalText;
-            const hasChanges = currentText !== originalText;
-            
-            // Update element info with current text
-            elementInfo.text = currentText;
-            
-            // Update save button state based on changes
-            this.updateSaveButtonState(hasChanges);
-            
-            console.log(`Content check: "${currentText}" vs "${originalText}" - Changed: ${hasChanges}`);
-        };
-        
-        // Store reference to current function for cleanup
-        this.currentCheckForChanges = checkForChanges;
-        
-        // Add event listeners for content changes
-        element.addEventListener('input', checkForChanges);
-        element.addEventListener('keyup', checkForChanges);
-        element.addEventListener('paste', () => {
-            // Check for changes after paste
-            setTimeout(checkForChanges, 10);
+          }
         });
-        
-        // Store event cleanup function
-        this.cleanupEditableElement = () => {
-            element.contentEditable = false;
-            element.removeEventListener('input', checkForChanges);
-            element.removeEventListener('keyup', checkForChanges);
-            element.blur();
-        };
-    }
-    
-    updateSaveButtonState(hasChanges) {
-        if (this.saveTextBtn) {
-            if (hasChanges) {
-                this.saveTextBtn.disabled = false;
-                this.saveTextBtn.style.opacity = '1';
-                this.saveTextBtn.style.cursor = 'pointer';
-                console.log('✅ Save button enabled - changes detected');
-            } else {
-                this.saveTextBtn.disabled = true;
-                this.saveTextBtn.style.opacity = '0.5';
-                this.saveTextBtn.style.cursor = 'not-allowed';
-                console.log('❌ Save button disabled - no changes');
+        console.log("✅ Added edit functionality to dock button");
+      }
+      
+      // Save Changes button functionality - same as original
+      const saveChangesBtn = this.topDiv.querySelector('#admin-save-changes-button');
+      if (saveChangesBtn) {
+        saveChangesBtn.addEventListener('click', async () => {
+          if (saveChangesBtn.disabled) return;
+          
+          console.log('💾 Save changes button clicked from dock!');
+          saveChangesBtn.disabled = true;
+          saveChangesBtn.style.cursor = 'not-allowed';
+          saveChangesBtn.style.opacity = '0.5';
+          saveChangesBtn.innerHTML = 'Saving...';
+          
+          // Also disable undo button during publish
+          const undoBtn = this.topDiv.querySelector('#admin-undo-button');
+          if (undoBtn) {
+            undoBtn.disabled = true;
+            undoBtn.style.cursor = 'not-allowed';
+            undoBtn.style.opacity = '0.5';
+          }
+          
+          try {
+            // First, save any locked images to HTML
+            const lockedImages = document.querySelectorAll('.admin-uploaded-image-wrapper[data-locked="true"]');
+            if (lockedImages.length > 0) {
+              console.log(`💾 Saving ${lockedImages.length} locked images to HTML...`);
+              saveChangesBtn.innerHTML = 'Saving images...';
+              
+              for (const imageWrapper of lockedImages) {
+                const img = imageWrapper.querySelector('.admin-uploaded-image');
+                const imagePath = imageWrapper.dataset.imagePath;
+                if (img && imagePath) {
+                  await this.saveImageToHTML(imageWrapper, img, imagePath);
+                }
+              }
             }
-        }
-    }
-    
-    clearAllSelections() {
-        // Clean up any editable elements
-        if (this.cleanupEditableElement) {
-            this.cleanupEditableElement();
-            this.cleanupEditableElement = null;
-        }
-        
-        // Remove selection borders from all selected elements
-        this.selectedElements.forEach(elementInfo => {
-            this.removeSelectionBorder(elementInfo.element);
-        });
-        
-        // Clear the selections array
-        this.selectedElements = [];
-        this.renderSelected();
-        this.editingIndex = -1;
-        
-        // Reset toolbar position when selections are cleared
-        this.resetToolbarPosition();
-        
-        // Hide editing sections
-        this.textEditingSection.style.display = 'none';
-        this.aiEditSection.style.display = 'none';
-        
-        this.showStatus('All selections cleared', 'info');
-        console.log('🗑️ Cleared all selections');
-    }
-    
-    getElementAttributes(element) {
-        const attributes = {};
-        for (let attr of element.attributes) {
-            attributes[attr.name] = attr.value;
-        }
-        return attributes;
-    }
-    
-    renderSelected() {
-        // Show edit mode section if we have elements
-        if (this.selectedElements.length > 0) {
-            this.editModeSection.style.display = 'block';
-        } else {
-            this.editModeSection.style.display = 'none';
-        }
-    }
-    
-    editElement(index) {
-        this.editingIndex = index;
-        const element = this.selectedElements[index];
-        
-        // Update the selected element visual state
-        this.renderSelected();
-        
-        // Show edit interface based on current mode
-        if (this.currentEditMode === 'text') {
-            this.textEditingSection.style.display = 'block';
-            this.aiEditSection.style.display = 'none';
             
-            // Make element editable and set up content monitoring
-            this.makeElementEditable(element.element);
-            
-        } else {
-            this.promptInput.value = '';
-            this.aiEditSection.style.display = 'block';
-            this.textEditingSection.style.display = 'none';
-            this.promptInput.focus();
-        }
-    }
-    
-    async saveTextToFile() {
-        if (this.editingIndex < 0) return;
-        
-        const element = this.selectedElements[this.editingIndex];
-        const newText = element.text.trim();
-        
-        if (newText === element.originalText) {
-            this.showStatus('No changes to save', 'info');
-            return;
-        }
-        
-        this.showStatus('Saving changes to file...', 'loading');
-        
-        try {
-            const response = await fetch('/api/direct-text-edit', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    url: window.location.pathname,
-                    elementSelector: this.generateElementSelector(element),
-                    newText: newText,
-                    originalText: element.originalText
-                })
+            // Then publish all changes
+            saveChangesBtn.innerHTML = 'Publishing...';
+            const response = await fetch('/api/publish', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' }
             });
             
             const result = await response.json();
             
             if (result.success) {
-                // Update the DOM element's text content to show the saved changes
-                element.element.textContent = newText;
-                
-                // Update the stored element info
-                element.text = newText;
-                element.originalText = newText;
-                element.originalHTML = element.element.innerHTML; // Update stored HTML to reflect changes
-                
-                this.renderSelected();
-                this.cancelTextEdit();
-                this.showStatus('✅ Saved to file successfully!', 'success');
-                
-                // Increment edit counter when user saves text edits
-                console.log('🔍 Checking for incrementEditCount function:', typeof window.incrementEditCount);
-                console.log('🔍 Current edit count:', window.editCount);
-                if (window.incrementEditCount) {
-                    window.incrementEditCount();
-                } else {
-                    console.error('❌ incrementEditCount function not found!');
-                }
+              saveChangesBtn.innerHTML = '✅ Published!';
+              if (undoBtn) undoBtn.innerHTML = '✅ Published!';
+              setTimeout(() => {
+                saveChangesBtn.style.display = 'none';
+                if (undoBtn) undoBtn.style.display = 'none';
+                if (window.resetEditCount) window.resetEditCount();
+              }, 2000);
             } else {
-                this.showStatus('❌ Failed to save: ' + (result.error || result.message), 'error');
+              saveChangesBtn.innerHTML = '❌ Failed';
+              setTimeout(() => {
+                saveChangesBtn.innerHTML = 'Save Changes';
+                saveChangesBtn.disabled = false;
+                saveChangesBtn.style.cursor = 'pointer';
+                saveChangesBtn.style.opacity = '1';
+              }, 2000);
             }
-        } catch (error) {
-            this.showStatus('❌ Network error', 'error');
+          } catch (error) {
             console.error('Save error:', error);
-        }
-    }
-    
-    async submitPrompt() {
-        const prompt = this.promptInput.value.trim();
-        const isBatchMode = this.batchEditCheckbox && this.batchEditCheckbox.checked;
-        
-        if (!prompt) {
-            this.showStatus('Please enter AI edit instructions', 'error');
+            saveChangesBtn.innerHTML = '❌ Error';
+            setTimeout(() => {
+              saveChangesBtn.innerHTML = 'Save Changes';
+              saveChangesBtn.disabled = false;
+              saveChangesBtn.style.cursor = 'pointer';
+              saveChangesBtn.style.opacity = '1';
+            }, 2000);
+          }
+        });
+        console.log("✅ Added save changes functionality to dock button");
+      }
+      
+      // Undo button functionality - same as original
+      const undoBtn = this.topDiv.querySelector('#admin-undo-button');
+      if (undoBtn) {
+        undoBtn.addEventListener('click', async () => {
+          if (undoBtn.disabled) return;
+          
+          console.log('↶ Undo button clicked from dock!');
+          
+          // Count locked images
+          const lockedImages = document.querySelectorAll('.admin-uploaded-image-wrapper[data-locked="true"]');
+          const lockedCount = lockedImages.length;
+          const totalChanges = (window.editCount || 0);
+          
+          let confirmMessage = `Are you sure you want to undo all ${totalChanges} unsaved changes?`;
+          if (lockedCount > 0) {
+            confirmMessage += `\n\nThis includes ${lockedCount} locked image(s) that will be removed from the page.`;
+          }
+          confirmMessage += '\n\nThis cannot be undone.';
+          
+          // Confirm with user
+          if (!confirm(confirmMessage)) {
             return;
-        }
-        
-        if (this.selectedElements.length === 0) {
-            this.showStatus('Please select at least one element', 'error');
-            return;
-        }
-        
-        // Show loading state on buttons and elements
-        this.setAIProcessingState(true);
-        this.setState('loading');
-        
-        if (isBatchMode && this.selectedElements.length > 1) {
-            this.showStatus(`Generating preview for ${this.selectedElements.length} elements...`, 'loading');
-        } else {
-            this.showStatus('Generating AI preview...', 'loading');
-        }
-        
-        try {
-            const elementsToEdit = isBatchMode ? this.selectedElements : [this.selectedElements[this.editingIndex] || this.selectedElements[0]];
-            const fullPrompt = this.generateBatchPrompt(prompt, elementsToEdit, isBatchMode);
-            
-            // Show "AI is processing..." on selected elements
-            this.showAIProcessingOnElements(elementsToEdit);
-            
-            const result = await this.sendToBackend(fullPrompt, elementsToEdit);
-            
-            if (result.success && result.is_selective_preview) {
-                this.setState('success');
-                this.showStatus('AI preview generated! Review changes on the page.', 'success');
-                
-                // Hide processing indicators and show selective preview interface
-                this.hideAIProcessingOnElements(elementsToEdit);
-                this.showSelectivePreview(result, elementsToEdit);
-                
-            } else {
-                this.setState('error');
-                this.showStatus(result.error || 'Failed to generate AI preview', 'error');
-                this.hideAIProcessingOnElements(elementsToEdit);
+          }
+          
+          undoBtn.disabled = true;
+          undoBtn.style.cursor = 'not-allowed';
+          undoBtn.style.opacity = '0.5';
+          
+          try {
+            // First, remove any locked images from the page
+            if (lockedImages.length > 0) {
+              console.log(`↶ Removing ${lockedImages.length} locked images...`);
+              lockedImages.forEach(imageWrapper => {
+                imageWrapper.remove();
+              });
             }
-        } catch (error) {
-            console.error('Error submitting prompt:', error);
-            this.setState('error');
-            this.showStatus('Error processing AI request', 'error');
             
-            // Hide processing indicators on error
-            const elementsToEdit = isBatchMode ? this.selectedElements : [this.selectedElements[this.editingIndex] || this.selectedElements[0]];
-            this.hideAIProcessingOnElements(elementsToEdit);
-        } finally {
-            // Always restore button states
-            this.setAIProcessingState(false);
+            const response = await fetch('/api/undo', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' }
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+              if (window.resetEditCount) window.resetEditCount();
+              undoBtn.style.display = 'none';
+              const saveBtn = this.topDiv.querySelector('#admin-save-changes-button');
+              if (saveBtn) saveBtn.style.display = 'none';
+              location.reload(); // Reload page to show undone changes
+            } else {
+              undoBtn.disabled = false;
+              undoBtn.style.cursor = 'pointer';
+              undoBtn.style.opacity = '1';
+            }
+          } catch (error) {
+            console.error('Undo error:', error);
+            undoBtn.disabled = false;
+            undoBtn.style.cursor = 'pointer';
+            undoBtn.style.opacity = '1';
+          }
+        });
+        console.log("✅ Added undo functionality to dock button");
+      }
+      
+    }, 100);
+    
+    // Add floating dock hover animation effects
+    this.initializeDockEffects();
+    
+    console.log("✅ Top div created with floating dock design");
+  }
+  
+  initializeDockEffects() {
+    // Add distance-based scaling for dock items (like macOS dock)
+    const dock = this.topDiv;
+    const dockItems = dock.querySelectorAll('button:not([type="file"])');
+
+    dock.addEventListener('mousemove', (e) => {
+      const mouseX = e.pageX;
+
+      dockItems.forEach(item => {
+        if (item.style.display === 'none') return; // Skip hidden items
+        
+        const rect = item.getBoundingClientRect();
+        const itemCenterX = rect.left + rect.width / 2;
+        const distance = Math.abs(mouseX - itemCenterX);
+        
+        // Calculate scale based on distance (max 120px range)
+        const maxDistance = 120;
+        const minScale = 40;
+        const maxScale = 64;
+        
+        let scale;
+        if (distance < maxDistance) {
+          // Smooth curve for scaling
+          const factor = 1 - (distance / maxDistance);
+          scale = minScale + (maxScale - minScale) * factor;
+        } else {
+          scale = minScale;
         }
+
+        // Apply smooth spring-like transition
+        item.style.width = `${scale}px`;
+        item.style.height = `${scale}px`;
+        
+        // Scale icon proportionally
+        const icon = item.querySelector('svg');
+        if (icon) {
+          const iconScale = (scale / minScale) * 18;
+          icon.style.width = `${iconScale}px`;
+          icon.style.height = `${iconScale}px`;
+        }
+      });
+    });
+
+    // Reset sizes when mouse leaves dock
+    dock.addEventListener('mouseleave', () => {
+      dockItems.forEach(item => {
+        item.style.width = '40px';
+        item.style.height = '40px';
+        
+        const icon = item.querySelector('svg');
+        if (icon) {
+          icon.style.width = '18px';
+          icon.style.height = '18px';
+        }
+      });
+    });
+  }
+
+  createToolbar() {
+    // Remove existing
+    const existing = document.getElementById("admin-toolbar");
+    if (existing) existing.remove();
+
+    // Create the main container
+    this.container = document.createElement("div");
+    this.container.id = "admin-toolbar";
+    this.container.className = "admin-toolbar-popup";
+    this.container.innerHTML = `
+      <div class="toolbar-popup-content">
+        <button class="close-btn" id="close-btn">✕</button>
+        
+        <div class="image-actions-section" id="image-actions-section" style="display: none;">
+          <button class="replace-btn" id="btn-replace-image">🔄 Replace</button>
+          <button class="delete-btn" id="btn-delete-image">🗑️ Delete</button>
+          <input type="file" id="image-replace-input" accept="image/*" style="display: none;">
+        </div>
+        
+        <div class="toolbar-actions">
+          <button class="toolbar-btn" id="btn-toggle-select">Start Selecting</button>
+        </div>
+        
+        <div class="edit-mode-section" id="edit-mode-section" style="display: none;">
+          <div class="edit-mode-toggle">
+            <button class="toggle-btn active" id="text-mode-btn">✏️ Text</button>
+            <button class="toggle-btn" id="ai-mode-btn">🤖 AI</button>
+          </div>
+          
+          <div class="text-editing-section" id="text-editing-section" style="display: none;">
+            <div class="text-edit-actions">
+              <button class="text-edit-btn save-btn" id="save-text-btn">Save</button>
+              <button class="text-edit-btn cancel-btn" id="cancel-text-btn">Cancel</button>
+            </div>
+          </div>
+          
+          <div class="ai-edit-section" id="ai-edit-section" style="display: none;">
+            <div class="batch-edit-options">
+              <label class="batch-checkbox">
+                <input type="checkbox" id="batch-edit-mode" />
+                <span class="checkmark"></span>
+                Apply the same edit instruction to all selected elements
+              </label>
+            </div>
+            <textarea 
+              id="prompt-input" 
+              class="edit-input"
+              placeholder="Describe the changes you want AI to make..."
+              rows="3"
+            ></textarea>
+            <div class="ai-edit-actions">
+              <button class="edit-submit-btn" id="submit-prompt">✨ Apply AI Changes</button>
+              <button class="text-edit-btn cancel-btn" id="cancel-ai-btn">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    this.injectStyles();
+    document.body.appendChild(this.container);
+
+    // Get references
+    this.editModeSection = document.getElementById("edit-mode-section");
+    this.textEditingSection = document.getElementById("text-editing-section");
+    this.aiEditSection = document.getElementById("ai-edit-section");
+    this.promptInput = document.getElementById("prompt-input");
+    this.selectBtn = document.getElementById("btn-toggle-select");
+    this.textModeBtn = document.getElementById("text-mode-btn");
+    this.aiModeBtn = document.getElementById("ai-mode-btn");
+    this.saveTextBtn = document.getElementById("save-text-btn");
+    this.cancelTextBtn = document.getElementById("cancel-text-btn");
+    
+    console.log('🔍 Button elements found:', {
+      saveTextBtn: !!this.saveTextBtn,
+      cancelTextBtn: !!this.cancelTextBtn,
+      textModeBtn: !!this.textModeBtn,
+      aiModeBtn: !!this.aiModeBtn,
+      selectBtn: !!this.selectBtn
+    });
+    this.cancelAiBtn = document.getElementById("cancel-ai-btn");
+    this.submitPromptBtn = document.getElementById("submit-prompt");
+    this.closeBtn = document.getElementById("close-btn");
+
+    this.batchEditCheckbox = document.getElementById("batch-edit-mode");
+    this.currentEditMode = "text"; // Default to text edit mode
+    this.hasUnsavedEdits = false;
+
+    // Image upload references - handled by dock now
+    this.uploadBtn = null; // Upload functionality moved to dock
+    this.uploadInput = null;
+    this.uploadStatus = null;
+
+    // Image actions references
+    this.imageActionsSection = document.getElementById("image-actions-section");
+    this.replaceImageBtn = document.getElementById("btn-replace-image");
+    this.deleteImageBtn = document.getElementById("btn-delete-image");
+    this.replaceImageInput = document.getElementById("image-replace-input");
+  }
+
+  attachEvents() {
+    this.selectBtn.addEventListener("click", () => {
+      console.log('🔍 Start Selecting button clicked, current isSelecting:', this.isSelecting);
+      this.startEditing();
+    });
+    this.textModeBtn.addEventListener("click", () => {
+      console.log('🔍 Text mode button clicked');
+      this.setEditMode("text");
+    });
+    this.aiModeBtn.addEventListener("click", () => {
+      console.log('🔍 AI mode button clicked');
+      this.setEditMode("ai");
+    });
+    this.saveTextBtn.addEventListener("click", () => {
+      console.log('🔍 Save button event listener triggered');
+      this.saveTextToFile();
+    });
+    this.cancelTextBtn.addEventListener("click", () => {
+      console.log('🔍 Cancel button event listener triggered');
+      this.cancelTextEdit();
+    });
+    this.cancelAiBtn.addEventListener("click", () => this.cancelAiEdit());
+    this.submitPromptBtn.addEventListener("click", () => this.submitPrompt());
+    this.closeBtn.addEventListener("click", () => {
+      console.log('❌ Close button clicked!');
+      // Cancel any ongoing edits without saving
+      if (this.editingIndex >= 0) {
+        if (this.currentEditMode === "text") {
+          this.cancelTextEdit();
+        } else {
+          this.cancelAiEdit();
+        }
+      } else {
+        // Just hide if no active editing
+        this.hide();
+      }
+    });
+
+    // Image upload events - add defensive checks
+    if (this.uploadBtn) {
+      this.uploadBtn.addEventListener("click", () => this.triggerImageUpload());
+    } else {
+      console.log('⚠️ Upload button not found in toolbar');
+    }
+    if (this.uploadInput) {
+      this.uploadInput.addEventListener("change", (e) =>
+        this.handleImageUpload(e)
+      );
+    } else {
+      console.log('⚠️ Upload input not found in toolbar');
+    }
+
+    // Image action events
+    if (this.replaceImageBtn) {
+      this.replaceImageBtn.addEventListener("click", () =>
+        this.triggerImageReplace()
+      );
+    }
+    if (this.deleteImageBtn) {
+      this.deleteImageBtn.addEventListener("click", () =>
+        this.deleteSelectedImage()
+      );
+    }
+    if (this.replaceImageInput) {
+      this.replaceImageInput.addEventListener("change", (e) =>
+        this.handleImageReplace(e)
+      );
+    }
+
+    // Keyboard shortcuts
+    this.promptInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        this.submitPrompt();
+      }
+    });
+
+    // Click outside to close
+    document.addEventListener("click", (e) => {
+      if (
+        this.isVisible &&
+        !this.container.contains(e.target) &&
+        !this.isUIElement(e.target)
+      ) {
+        this.hide();
+      }
+    });
+  }
+
+  show() {
+    this.isVisible = true;
+    this.container.style.display = "block";
+    this.container.classList.add("visible");
+    this.setState("idle");
+
+    // If we have selected elements, restore the editing interface
+    if (this.selectedElements.length > 0) {
+      this.renderSelected();
+
+      // If we were in the middle of editing, restore the text editing mode
+      if (this.editingIndex >= 0) {
+        this.editElement(this.editingIndex);
+      }
+    }
+
+    // Show save changes button when toolbar opens and ensure it's properly initialized
+    if (window.showSaveChangesButton) {
+      window.showSaveChangesButton();
+    }
+    if (window.showUndoButton) {
+      window.showUndoButton();
+    }
+    if (window.updateSaveChangesButton) {
+      window.updateSaveChangesButton();
+    }
+
+    console.log("✅ Toolbar shown - restored editing state");
+  }
+
+  hide() {
+    this.isVisible = false;
+    this.container.style.display = "none";
+    this.container.classList.remove("visible");
+    this.exitSelectMode();
+    this.setState("idle");
+
+    // Don't clear selections when hiding toolbar - keep elements selected
+    // Don't clean up editable elements - preserve editing state
+
+    // Hide save changes button when toolbar closes
+    if (window.hideSaveChangesButton) {
+      window.hideSaveChangesButton();
+    }
+    if (window.hideUndoButton) {
+      window.hideUndoButton();
+    }
+
+    console.log("🔻 Toolbar hidden - selections and editing state preserved");
+  }
+
+  startEditing() {
+    if (this.isSelecting) {
+      this.exitSelectMode();
+    } else {
+      this.enterSelectMode();
+    }
+  }
+
+  setEditMode(mode) {
+    console.log('🔧 Setting edit mode to:', mode, 'from:', this.currentEditMode);
+    this.currentEditMode = mode;
+
+    // Update toggle button states
+    this.textModeBtn.classList.toggle("active", mode === "text");
+    this.aiModeBtn.classList.toggle("active", mode === "ai");
+
+    // Show appropriate edit section
+    if (this.editingIndex >= 0) {
+      if (mode === "text") {
+        this.textEditingSection.style.display = "block";
+        this.aiEditSection.style.display = "none";
+
+        // Re-enable text editing mode with cursor
+        const elementInfo = this.selectedElements[this.editingIndex];
+        if (elementInfo && elementInfo.element) {
+          this.makeElementEditable(elementInfo.element);
+        }
+      } else {
+        this.textEditingSection.style.display = "none";
+        this.aiEditSection.style.display = "block";
+
+        // Disable contentEditable when switching to AI mode
+        const elementInfo = this.selectedElements[this.editingIndex];
+        if (elementInfo && elementInfo.element && this.cleanupEditableElement) {
+          elementInfo.element.contentEditable = false;
+          elementInfo.element.blur();
+        }
+
+        this.promptInput.focus();
+      }
+    }
+  }
+
+  toggleSelect() {
+    if (this.isSelecting) {
+      this.exitSelectMode();
+    } else {
+      this.enterSelectMode();
+    }
+  }
+
+  enterSelectMode() {
+    this.isSelecting = true;
+    this.selectBtn.textContent = "⏹ Stop Selecting";
+    this.selectBtn.classList.add("active");
+    document.body.style.setProperty("cursor", "crosshair", "important");
+    document.body.classList.add("admin-selecting");
+    document.addEventListener("mouseover", this.handleHover.bind(this), true);
+    document.addEventListener("click", this.handleSelect.bind(this), true);
+    this.showStatus("Click on elements to select them for editing", "info");
+    console.log("🎯 Selection mode ON - crosshair cursor should show");
+  }
+
+  exitSelectMode() {
+    this.isSelecting = false;
+    this.selectBtn.textContent = "Start Selecting";
+    this.selectBtn.classList.remove("active");
+    document.body.style.removeProperty("cursor");
+    document.body.classList.remove("admin-selecting");
+    document.removeEventListener("mouseover", this.handleHover, true);
+    document.removeEventListener("click", this.handleSelect, true);
+    this.clearHighlight();
+    console.log("🎯 Selection mode OFF - cursor restored");
+  }
+
+  handleHover(e) {
+    if (!this.isSelecting || this.isUIElement(e.target)) return;
+    this.highlightElement(e.target);
+  }
+
+  handleSelect(e) {
+    if (!this.isSelecting || this.isUIElement(e.target)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    this.selectElement(e.target);
+    this.exitSelectMode();
+  }
+
+  selectElement(element) {
+    // Check if already selected
+    if (this.selectedElements.find((el) => el.element === element)) {
+      this.showStatus("Element already selected", "error");
+      return;
+    }
+
+    const elementInfo = {
+      element: element,
+      tag: element.tagName.toLowerCase(),
+      id: element.id || "",
+      classes: Array.from(element.classList).join(" "),
+      text: element.textContent?.trim() || "",
+      originalText: element.textContent?.trim() || "",
+      originalHTML: element.innerHTML, // Store original HTML structure
+      attributes: this.getElementAttributes(element),
+      isImage: element.tagName.toLowerCase() === "img",
+    };
+
+    this.selectedElements.push(elementInfo);
+    this.renderSelected();
+
+    // Add visual selection indicator
+    this.addSelectionBorder(element);
+
+    // Position toolbar below the selected element
+    this.positionToolbarBelowElement(element);
+
+    // Auto-open editing interface for the newly selected element
+    this.editElement(this.selectedElements.length - 1);
+
+    this.showStatus(
+      "Element selected - use toggle to switch edit modes",
+      "success"
+    );
+    console.log("✅ Element selected:", elementInfo);
+  }
+
+  addSelectionBorder(element) {
+    // Add blue dashed border to selected element
+    element.style.setProperty("outline", "2px dashed #3b82f6", "important");
+    element.style.setProperty("outline-offset", "2px", "important");
+    element.classList.add("admin-selected-element");
+
+    // Add drag handle bar at the top of the element
+    this.addDragHandle(element);
+
+    console.log("✅ Added selection border to element:", element.tagName);
+  }
+
+  addDragHandle(element) {
+    // Remove any existing drag handle
+    const existingHandle = element.querySelector(".admin-drag-handle");
+    if (existingHandle) {
+      existingHandle.remove();
+    }
+
+    // Create drag handle container
+    const dragHandle = document.createElement("div");
+    dragHandle.className = "admin-drag-handle";
+    dragHandle.contentEditable = false; // Make drag handle non-editable
+    dragHandle.innerHTML = `
+            <div class="drag-handle-bar" style="pointer-events: auto; user-select: none;">
+                <span class="drag-icon">⋮⋮</span>
+                <span class="drag-text">Drag to move</span>
+                <button class="save-position-btn" title="Save position">Save</button>
+            </div>
+        `;
+
+    // Position drag handle as overlay, completely outside content flow
+    element.style.position = "relative";
+    dragHandle.style.position = "absolute";
+    dragHandle.style.top = "-40px"; // Move further up to avoid content
+    dragHandle.style.left = "50%";
+    dragHandle.style.transform = "translateX(-50%)";
+    dragHandle.style.zIndex = "10000";
+    dragHandle.style.pointerEvents = "none"; // Prevent interference with text editing
+    
+    // Allow pointer events only on the drag handle bar for dragging
+    const dragHandleBar = dragHandle.querySelector('.drag-handle-bar');
+    if (dragHandleBar) {
+      dragHandleBar.style.pointerEvents = "auto";
     }
     
-    showSelectivePreview(result, elementsToEdit) {
-        console.log('🔍 Selective AI Preview Result:', result);
-        console.log('🔍 Element updates:', result.element_updates);
+    // Create a wrapper to isolate drag handle from element content
+    const wrapper = document.createElement("div");
+    wrapper.style.position = "relative";
+    wrapper.style.display = "inline-block";
+    wrapper.style.width = "100%";
+    
+    // Insert wrapper around element, then add drag handle to wrapper
+    element.parentNode.insertBefore(wrapper, element);
+    wrapper.appendChild(element);
+    wrapper.appendChild(dragHandle);
+
+    // Get the save button
+    const saveBtn = dragHandle.querySelector(".save-position-btn");
+
+    // Make element draggable
+    this.makeDraggableWithHandle(element, dragHandle, saveBtn);
+
+    console.log("✅ Added drag handle to element:", element.tagName);
+  }
+
+  makeDraggableWithHandle(element, dragHandle, saveBtn) {
+    let isDragging = false;
+    let startX, startY, initialLeft, initialTop;
+
+    // Store original position for potential restore
+    const originalPosition = {
+      position:
+        element.style.position || window.getComputedStyle(element).position,
+      left: element.style.left,
+      top: element.style.top,
+      transform: element.style.transform,
+    };
+
+    // DON'T make element absolute positioned yet - wait for actual drag start
+    let hasStartedDragging = false;
+
+    dragHandle.addEventListener("mousedown", (e) => {
+      // Don't drag if clicking the save button
+      if (e.target.closest(".save-position-btn")) {
+        return;
+      }
+
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+
+      element.style.cursor = "grabbing";
+      dragHandle.style.cursor = "grabbing";
+
+      console.log("🎯 Mouse down - ready to drag (no positioning yet)");
+    });
+
+    document.addEventListener("mousemove", (e) => {
+      if (!isDragging) return;
+
+      e.preventDefault();
+
+      // Only apply absolute positioning when user actually starts dragging
+      if (!hasStartedDragging) {
+        hasStartedDragging = true;
+        const rect = element.getBoundingClientRect();
         
-        // Store original content of each element for restore
-        this.originalElementContent = {};
+        // Now make element absolutely positioned for dragging
+        element.style.position = "absolute";
+        element.style.left = rect.left + window.scrollX + "px";
+        element.style.top = rect.top + window.scrollY + "px";
+        element.style.zIndex = "1000";
         
-        // Apply selective preview to specific elements only
-        this.applySelectivePreview(result.element_updates, elementsToEdit);
+        // Update initial position for drag calculations
+        initialLeft = rect.left + window.scrollX;
+        initialTop = rect.top + window.scrollY;
         
-        // Show preview interface in toolbar
-        this.aiEditSection.innerHTML = `
+        console.log("🎯 First drag movement - applied absolute positioning");
+      }
+
+      const deltaX = e.clientX - startX;
+      const deltaY = e.clientY - startY;
+
+      const newLeft = initialLeft + deltaX;
+      const newTop = initialTop + deltaY;
+
+      element.style.left = newLeft + "px";
+      element.style.top = newTop + "px";
+    });
+
+    document.addEventListener("mouseup", () => {
+      if (isDragging) {
+        isDragging = false;
+        element.style.cursor = "move";
+        dragHandle.style.cursor = "grab";
+        console.log("🎯 Stopped dragging element");
+      }
+    });
+
+    // Save position button handler
+    saveBtn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      await this.saveElementPosition(element);
+    });
+
+    // Set initial cursor
+    dragHandle.style.cursor = "grab";
+    element.style.cursor = "move";
+  }
+
+  async saveElementPosition(element) {
+    this.showStatus("Saving element position...", "loading");
+
+    try {
+      const rect = element.getBoundingClientRect();
+      const computedStyle = window.getComputedStyle(element);
+
+      // Get current position values
+      const position = {
+        position: element.style.position,
+        left: element.style.left,
+        top: element.style.top,
+        zIndex: element.style.zIndex || computedStyle.zIndex,
+      };
+
+      // Find the element info in selected elements
+      const elementInfo = this.selectedElements.find(
+        (el) => el.element === element
+      );
+      if (!elementInfo) {
+        this.showStatus("Element not found in selection", "error");
+        return;
+      }
+
+      const response = await fetch("/api/save-element-position", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: window.location.pathname,
+          elementSelector: this.generateElementSelector(elementInfo),
+          position: position,
+          elementTag: elementInfo.tag,
+          elementId: elementInfo.id,
+          elementClasses: elementInfo.classes,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        this.showStatus("✅ Position saved to HTML file!", "success");
+
+        // Increment edit counter
+        if (window.incrementEditCount) {
+          window.incrementEditCount();
+        }
+      } else {
+        this.showStatus(`❌ Failed to save: ${result.error}`, "error");
+      }
+    } catch (error) {
+      this.showStatus("❌ Network error while saving", "error");
+      console.error("Save position error:", error);
+    }
+  }
+
+  removeSelectionBorder(element) {
+    // Remove selection border
+    element.style.removeProperty("outline");
+    element.style.removeProperty("outline-offset");
+    element.classList.remove("admin-selected-element");
+
+    // Remove drag handle and wrapper (if exists)
+    const dragHandle = element.querySelector(".admin-drag-handle");
+    if (dragHandle) {
+      dragHandle.remove();
+    }
+    
+    // Check if element is wrapped and unwrap it
+    const wrapper = element.parentNode;
+    if (wrapper && wrapper.style.position === "relative" && wrapper.style.display === "inline-block") {
+      // This looks like our wrapper - unwrap the element
+      const parent = wrapper.parentNode;
+      parent.insertBefore(element, wrapper);
+      wrapper.remove();
+      console.log("🗑️ Unwrapped element from drag wrapper");
+    }
+
+    console.log("🗑️ Removed selection border and cleanup from element:", element.tagName);
+  }
+
+  positionToolbarBelowElement(element) {
+    // Store reference to the element we're following
+    this.followingElement = element;
+
+    // Update position immediately
+    this.updateToolbarPosition();
+
+    // Add scroll listener to keep toolbar with element
+    this.scrollListener = () => this.updateToolbarPosition();
+    window.addEventListener("scroll", this.scrollListener);
+    window.addEventListener("resize", this.scrollListener);
+
+    console.log("🎯 Toolbar now following selected element");
+  }
+
+  updateToolbarPosition() {
+    if (!this.followingElement) return;
+
+    const rect = this.followingElement.getBoundingClientRect();
+    const padding = 10;
+
+    // Calculate position relative to the document
+    const left = rect.left + window.scrollX;
+    const top = rect.bottom + window.scrollY + padding;
+
+    // Apply the position using absolute positioning
+    this.container.style.position = "absolute";
+    this.container.style.left = left + "px";
+    this.container.style.top = top + "px";
+    this.container.style.right = "auto";
+    this.container.style.bottom = "auto";
+
+    // Ensure high z-index to stay on top
+    this.container.style.zIndex = "99999";
+  }
+
+  resetToolbarPosition() {
+    // Remove scroll listeners
+    if (this.scrollListener) {
+      window.removeEventListener("scroll", this.scrollListener);
+      window.removeEventListener("resize", this.scrollListener);
+      this.scrollListener = null;
+    }
+
+    // Clear following element reference
+    this.followingElement = null;
+
+    // Reset to default bottom-right position
+    this.container.style.position = "fixed";
+    this.container.style.left = "auto";
+    this.container.style.top = "auto";
+    this.container.style.right = "20px";
+    this.container.style.bottom = "110px";
+    this.container.style.zIndex = "99999";
+
+    console.log("🔄 Reset toolbar to default position");
+  }
+
+
+  makeElementEditable(element) {
+    // Store original content for comparison
+    const elementInfo = this.selectedElements[this.editingIndex];
+
+    console.log('🔍 makeElementEditable - Original text stored as:', `"${elementInfo.originalText}"`);
+    console.log('🔍 makeElementEditable - Current element text:', `"${element.textContent?.trim()}"`);
+
+    // Always start with save button disabled when making element editable
+    console.log('🔍 makeElementEditable - Starting with save button DISABLED');
+    this.updateSaveButtonState(false);
+
+    // Clean up existing event listeners if any (but don't change contentEditable yet)
+    if (this.cleanupEditableElement) {
+      // Remove old listeners only
+      element.removeEventListener("input", this.currentCheckForChanges);
+      element.removeEventListener("keyup", this.currentCheckForChanges);
+    }
+
+    // Make element editable and focus
+    element.contentEditable = true;
+    element.focus();
+
+    // Move cursor to the end of the text
+    const range = document.createRange();
+    const selection = window.getSelection();
+    range.selectNodeContents(element);
+    range.collapse(false); // false = collapse to end
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    // Monitor content changes
+    const checkForChanges = () => {
+      // Extract only the actual text content, excluding drag handle
+      const dragHandle = element.querySelector('.admin-drag-handle');
+      let currentText = '';
+      
+      if (dragHandle) {
+        // Clone element and remove drag handle to get clean text
+        const clonedElement = element.cloneNode(true);
+        const clonedDragHandle = clonedElement.querySelector('.admin-drag-handle');
+        if (clonedDragHandle) {
+          clonedDragHandle.remove();
+        }
+        currentText = clonedElement.textContent?.trim() || "";
+      } else {
+        currentText = element.textContent?.trim() || "";
+      }
+      
+      const originalText = elementInfo.originalText;
+      const hasChanges = currentText !== originalText;
+
+      // Update element info with current text (but keep originalText unchanged)
+      elementInfo.text = currentText;
+
+      console.log(
+        `🔍 CHANGE CHECK: Current="${currentText}" Original="${originalText}" Changed=${hasChanges}`
+      );
+
+      // Update save button state based on changes
+      this.updateSaveButtonState(hasChanges);
+    };
+
+    // Store reference to current function for cleanup
+    this.currentCheckForChanges = checkForChanges;
+
+    // Add event listeners for content changes
+    element.addEventListener("input", checkForChanges);
+    element.addEventListener("keyup", checkForChanges);
+    element.addEventListener("paste", () => {
+      // Check for changes after paste
+      setTimeout(checkForChanges, 10);
+    });
+
+    // Store event cleanup function
+    this.cleanupEditableElement = () => {
+      element.contentEditable = false;
+      element.removeEventListener("input", checkForChanges);
+      element.removeEventListener("keyup", checkForChanges);
+      element.blur();
+    };
+  }
+
+  updateSaveButtonState(hasChanges) {
+    if (this.saveTextBtn) {
+      if (hasChanges) {
+        this.saveTextBtn.disabled = false;
+        this.saveTextBtn.style.opacity = "1";
+        this.saveTextBtn.style.cursor = "pointer";
+        this.saveTextBtn.style.background = "#22c55e";
+        console.log("✅ Save button ENABLED - changes detected");
+      } else {
+        this.saveTextBtn.disabled = true;
+        this.saveTextBtn.style.opacity = "0.5";
+        this.saveTextBtn.style.cursor = "not-allowed";
+        this.saveTextBtn.style.background = "#94a3b8";
+        console.log("❌ Save button DISABLED - no changes");
+      }
+    } else {
+      console.log("⚠️ Save button not found when trying to update state");
+    }
+  }
+
+  clearAllSelections() {
+    // Clean up any editable elements
+    if (this.cleanupEditableElement) {
+      this.cleanupEditableElement();
+      this.cleanupEditableElement = null;
+    }
+
+    // Remove selection borders from all selected elements
+    this.selectedElements.forEach((elementInfo) => {
+      this.removeSelectionBorder(elementInfo.element);
+    });
+
+    // Clear the selections array
+    this.selectedElements = [];
+    this.renderSelected();
+    this.editingIndex = -1;
+
+    // Reset toolbar position when selections are cleared
+    this.resetToolbarPosition();
+
+    // Hide editing sections
+    this.textEditingSection.style.display = "none";
+    this.aiEditSection.style.display = "none";
+
+    this.showStatus("All selections cleared", "info");
+    console.log("🗑️ Cleared all selections");
+  }
+
+  getElementAttributes(element) {
+    const attributes = {};
+    for (let attr of element.attributes) {
+      attributes[attr.name] = attr.value;
+    }
+    return attributes;
+  }
+
+  renderSelected() {
+    // Show edit mode section if we have elements
+    if (this.selectedElements.length > 0) {
+      this.editModeSection.style.display = "block";
+
+      // Show image actions section if the selected element is an image
+      const currentElement = this.selectedElements[this.editingIndex];
+      if (currentElement && currentElement.isImage) {
+        this.imageActionsSection.style.display = "block";
+      } else {
+        this.imageActionsSection.style.display = "none";
+      }
+    } else {
+      this.editModeSection.style.display = "none";
+      this.imageActionsSection.style.display = "none";
+    }
+  }
+
+  editElement(index) {
+    this.editingIndex = index;
+    const element = this.selectedElements[index];
+
+    // Update the selected element visual state
+    this.renderSelected();
+
+    // Show edit interface based on current mode
+    console.log('🔧 editElement - current mode:', this.currentEditMode);
+    
+    // Make sure edit mode section is visible
+    this.editModeSection.style.display = "block";
+    console.log('🔧 Edit mode section made visible');
+    
+    if (this.currentEditMode === "text") {
+      console.log('📝 Showing text editing section');
+      this.textEditingSection.style.display = "block";
+      this.aiEditSection.style.display = "none";
+
+      // Make element editable and set up content monitoring
+      this.makeElementEditable(element.element);
+    } else {
+      console.log('🤖 Showing AI editing section');
+      this.promptInput.value = "";
+      this.aiEditSection.style.display = "block";
+      this.textEditingSection.style.display = "none";
+      this.promptInput.focus();
+    }
+  }
+
+  async saveTextToFile() {
+    console.log('💾 Save button clicked! editingIndex:', this.editingIndex);
+    if (this.editingIndex < 0) {
+      console.log('❌ No element being edited');
+      return;
+    }
+
+    const element = this.selectedElements[this.editingIndex];
+    const newText = element.text.trim();
+
+    if (newText === element.originalText) {
+      this.showStatus("No changes to save", "info");
+      return;
+    }
+
+    this.showStatus("Saving changes to file...", "loading");
+
+    try {
+      const response = await fetch("/api/direct-text-edit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: window.location.pathname,
+          elementSelector: this.generateElementSelector(element),
+          newText: newText,
+          originalText: element.originalText,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Update the DOM element's text content to show the saved changes
+        element.element.textContent = newText;
+
+        // Update the stored element info
+        element.text = newText;
+        element.originalText = newText;
+        element.originalHTML = element.element.innerHTML; // Update stored HTML to reflect changes
+
+        // After successful save, clear all selections and hide toolbar
+        this.clearAllSelections();
+        this.hide();
+        this.showStatus("✅ Saved to file successfully!", "success");
+
+        // Increment edit counter when user saves text edits
+        console.log(
+          "🔍 Checking for incrementEditCount function:",
+          typeof window.incrementEditCount
+        );
+        console.log("🔍 Current edit count:", window.editCount);
+        if (window.incrementEditCount) {
+          window.incrementEditCount();
+        } else {
+          console.error("❌ incrementEditCount function not found!");
+        }
+      } else {
+        this.showStatus(
+          "❌ Failed to save: " + (result.error || result.message),
+          "error"
+        );
+      }
+    } catch (error) {
+      this.showStatus("❌ Network error", "error");
+      console.error("Save error:", error);
+    }
+  }
+
+  async submitPrompt() {
+    const prompt = this.promptInput.value.trim();
+    const isBatchMode =
+      this.batchEditCheckbox && this.batchEditCheckbox.checked;
+
+    if (!prompt) {
+      this.showStatus("Please enter AI edit instructions", "error");
+      return;
+    }
+
+    if (this.selectedElements.length === 0) {
+      this.showStatus("Please select at least one element", "error");
+      return;
+    }
+
+    // Show loading state on buttons and elements
+    this.setAIProcessingState(true);
+    this.setState("loading");
+
+    if (isBatchMode && this.selectedElements.length > 1) {
+      this.showStatus(
+        `Generating preview for ${this.selectedElements.length} elements...`,
+        "loading"
+      );
+    } else {
+      this.showStatus("Generating AI preview...", "loading");
+    }
+
+    try {
+      const elementsToEdit = isBatchMode
+        ? this.selectedElements
+        : [
+            this.selectedElements[this.editingIndex] ||
+              this.selectedElements[0],
+          ];
+      const fullPrompt = this.generateBatchPrompt(
+        prompt,
+        elementsToEdit,
+        isBatchMode
+      );
+
+      // Show "AI is processing..." on selected elements
+      this.showAIProcessingOnElements(elementsToEdit);
+
+      const result = await this.sendToBackend(fullPrompt, elementsToEdit);
+
+      if (result.success && result.is_selective_preview) {
+        this.setState("success");
+        this.showStatus(
+          "AI preview generated! Review changes on the page.",
+          "success"
+        );
+
+        // Hide processing indicators and show selective preview interface
+        this.hideAIProcessingOnElements(elementsToEdit);
+        this.showSelectivePreview(result, elementsToEdit);
+      } else {
+        this.setState("error");
+        this.showStatus(
+          result.error || "Failed to generate AI preview",
+          "error"
+        );
+        this.hideAIProcessingOnElements(elementsToEdit);
+      }
+    } catch (error) {
+      console.error("Error submitting prompt:", error);
+      this.setState("error");
+      this.showStatus("Error processing AI request", "error");
+
+      // Hide processing indicators on error
+      const elementsToEdit = isBatchMode
+        ? this.selectedElements
+        : [
+            this.selectedElements[this.editingIndex] ||
+              this.selectedElements[0],
+          ];
+      this.hideAIProcessingOnElements(elementsToEdit);
+    } finally {
+      // Always restore button states
+      this.setAIProcessingState(false);
+    }
+  }
+
+  showSelectivePreview(result, elementsToEdit) {
+    console.log("🔍 Selective AI Preview Result:", result);
+    console.log("🔍 Element updates:", result.element_updates);
+
+    // Store original content of each element for restore
+    this.originalElementContent = {};
+
+    // Apply selective preview to specific elements only
+    this.applySelectivePreview(result.element_updates, elementsToEdit);
+
+    // Show preview interface in toolbar
+    this.aiEditSection.innerHTML = `
             <div class="ai-preview-content">
                 <div class="preview-actions">
                     <button class="preview-btn save-ai-btn" id="save-ai-changes">
@@ -693,186 +1401,217 @@ class AdminToolbar {
                 </div>
             </div>
         `;
-        
-        // Store preview data for saving
-        this.currentPreview = {
-            element_updates: result.element_updates,
-            target_file: result.target_file,
-            project_path: result.project_path,
-            elementsToEdit: elementsToEdit
+
+    // Store preview data for saving
+    this.currentPreview = {
+      element_updates: result.element_updates,
+      target_file: result.target_file,
+      project_path: result.project_path,
+      elementsToEdit: elementsToEdit,
+    };
+
+    console.log("🔍 Stored selective preview data:", this.currentPreview);
+
+    // Attach event listeners
+    document
+      .getElementById("save-ai-changes")
+      .addEventListener("click", () => this.saveSelectiveAIChanges());
+    document
+      .getElementById("discard-ai-changes")
+      .addEventListener("click", () => this.discardSelectiveAIChanges());
+  }
+
+  applySelectivePreview(elementUpdates, elementsToEdit) {
+    console.log(
+      "🔍 Applying selective preview to",
+      elementUpdates.length,
+      "elements"
+    );
+
+    try {
+      // Apply updates to each specific element
+      elementUpdates.forEach((update, index) => {
+        const elementIndex = update.element_index;
+        const newContent = update.new_content;
+
+        // Get the corresponding selected element
+        const selectedElement = elementsToEdit[elementIndex];
+        if (!selectedElement || !selectedElement.element) {
+          console.warn(
+            `⚠️ Element ${elementIndex} not found in selected elements`
+          );
+          return;
+        }
+
+        const domElement = selectedElement.element;
+
+        // Store original content for restore functionality
+        this.originalElementContent[elementIndex] = {
+          innerHTML: domElement.innerHTML,
+          textContent: domElement.textContent,
         };
-        
-        console.log('🔍 Stored selective preview data:', this.currentPreview);
-        
-        // Attach event listeners
-        document.getElementById('save-ai-changes').addEventListener('click', () => this.saveSelectiveAIChanges());
-        document.getElementById('discard-ai-changes').addEventListener('click', () => this.discardSelectiveAIChanges());
+
+        // Apply the new content to this specific element
+        domElement.innerHTML = newContent;
+
+        // Add visual indicator that this element is in preview mode
+        domElement.classList.add("admin-preview-active");
+
+        console.log(
+          `✅ Applied preview to element ${elementIndex}:`,
+          domElement.tagName
+        );
+      });
+
+      this.showStatus(
+        `✅ Preview applied to ${elementUpdates.length} element(s) - images and other content untouched!`,
+        "success"
+      );
+    } catch (error) {
+      console.error("❌ Error applying selective preview:", error);
+      this.showStatus(
+        "❌ Error applying preview to selected elements",
+        "error"
+      );
     }
-    
-    applySelectivePreview(elementUpdates, elementsToEdit) {
-        console.log('🔍 Applying selective preview to', elementUpdates.length, 'elements');
-        
-        try {
-            // Apply updates to each specific element
-            elementUpdates.forEach((update, index) => {
-                const elementIndex = update.element_index;
-                const newContent = update.new_content;
-                
-                // Get the corresponding selected element
-                const selectedElement = elementsToEdit[elementIndex];
-                if (!selectedElement || !selectedElement.element) {
-                    console.warn(`⚠️ Element ${elementIndex} not found in selected elements`);
-                    return;
-                }
-                
-                const domElement = selectedElement.element;
-                
-                // Store original content for restore functionality
-                this.originalElementContent[elementIndex] = {
-                    innerHTML: domElement.innerHTML,
-                    textContent: domElement.textContent
-                };
-                
-                // Apply the new content to this specific element
-                domElement.innerHTML = newContent;
-                
-                // Add visual indicator that this element is in preview mode
-                domElement.classList.add('admin-preview-active');
-                
-                console.log(`✅ Applied preview to element ${elementIndex}:`, domElement.tagName);
-            });
-            
-            this.showStatus(`✅ Preview applied to ${elementUpdates.length} element(s) - images and other content untouched!`, 'success');
-            
-        } catch (error) {
-            console.error('❌ Error applying selective preview:', error);
-            this.showStatus('❌ Error applying preview to selected elements', 'error');
-        }
+  }
+
+  async saveSelectiveAIChanges() {
+    if (!this.currentPreview) {
+      this.showStatus("No preview data available", "error");
+      return;
     }
-    
-    async saveSelectiveAIChanges() {
-        if (!this.currentPreview) {
-            this.showStatus('No preview data available', 'error');
-            return;
+
+    this.showStatus("Saving AI changes to file...", "loading");
+
+    try {
+      const response = await fetch("/api/save-ai-changes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          element_updates: this.currentPreview.element_updates,
+          target_file: this.currentPreview.target_file,
+          project_path: this.currentPreview.project_path,
+          elements: this.currentPreview.elementsToEdit.map((el) => ({
+            tag: el.tag,
+            id: el.id,
+            classes: el.classes,
+            text: el.text,
+            attributes: el.attributes,
+          })),
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        this.showStatus(
+          `✅ AI changes saved! Updated ${result.updates_applied} element(s).`,
+          "success"
+        );
+
+        // Increment edit counter when AI edits are saved
+        console.log(
+          "🔍 AI Edit Save - Checking for incrementEditCount function:",
+          typeof window.incrementEditCount
+        );
+        if (window.incrementEditCount) {
+          window.incrementEditCount();
+        } else {
+          console.error(
+            "❌ AI Edit Save - incrementEditCount function not found!"
+          );
         }
-        
-        this.showStatus('Saving AI changes to file...', 'loading');
-        
-        try {
-            const response = await fetch('/api/save-ai-changes', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    element_updates: this.currentPreview.element_updates,
-                    target_file: this.currentPreview.target_file,
-                    project_path: this.currentPreview.project_path,
-                    elements: this.currentPreview.elementsToEdit.map(el => ({
-                        tag: el.tag,
-                        id: el.id,
-                        classes: el.classes,
-                        text: el.text,
-                        attributes: el.attributes
-                    }))
-                })
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                this.showStatus(`✅ AI changes saved! Updated ${result.updates_applied} element(s).`, 'success');
-                
-                // Increment edit counter when AI edits are saved
-                console.log('🔍 AI Edit Save - Checking for incrementEditCount function:', typeof window.incrementEditCount);
-                if (window.incrementEditCount) {
-                    window.incrementEditCount();
-                } else {
-                    console.error('❌ AI Edit Save - incrementEditCount function not found!');
-                }
-                
-                // Remove preview indicators from elements
-                this.removePreviewIndicators();
-                
-                // Clear preview data and restore normal UI
-                this.currentPreview = null;
-                this.originalElementContent = null;
-                
-                // Reset AI edit section to normal state
-                this.resetAIEditSection();
-                
-                // Remove selection styles and clear selections
-                this.selectedElements = [];
-                this.renderSelected();
-                this.aiEditSection.style.display = 'none';
-                this.editingIndex = -1;
-                
-                // Reset toolbar position since selections are cleared
-                this.resetToolbarPosition();
-                
-                
-                // Update status
-                this.showStatus('✅ AI changes saved! Use "Save Changes" button to commit to git.', 'success');
-            } else {
-                this.showStatus('❌ Failed to save AI changes: ' + (result.error || result.message), 'error');
-            }
-        } catch (error) {
-            this.showStatus('❌ Network error while saving', 'error');
-            console.error('Save selective AI changes error:', error);
-        }
-    }
-    
-    discardSelectiveAIChanges() {
-        console.log('🗑️ Discarding selective AI preview...');
-        
-        try {
-            // Remove all selected elements from the DOM
-            if (this.currentPreview?.elementsToEdit) {
-                this.currentPreview.elementsToEdit.forEach((elementInfo, index) => {
-                    if (elementInfo.element) {
-                        elementInfo.element.remove();
-                        console.log(`🗑️ Removed element ${index}:`, elementInfo.tag);
-                    }
-                });
-            }
-            
-            this.showStatus('🗑️ Elements removed successfully', 'success');
-            
-        } catch (error) {
-            console.error('❌ Error removing elements:', error);
-            this.showStatus('❌ Error removing elements', 'error');
-        }
-        
-        // Clear preview data
+
+        // Remove preview indicators from elements
+        this.removePreviewIndicators();
+
+        // Clear preview data and restore normal UI
         this.currentPreview = null;
         this.originalElementContent = null;
-        
-        // Reset AI edit section
+
+        // Reset AI edit section to normal state
         this.resetAIEditSection();
-        
-        // Clear selections and hide editing interface
+
+        // Remove selection styles and clear selections
         this.selectedElements = [];
         this.renderSelected();
-        this.aiEditSection.style.display = 'none';
+        this.aiEditSection.style.display = "none";
         this.editingIndex = -1;
-        
+
         // Reset toolbar position since selections are cleared
         this.resetToolbarPosition();
-        
-        
-        console.log('🗑️ Elements discarded and removed from DOM');
+
+        // Update status
+        this.showStatus(
+          '✅ AI changes saved! Use "Save Changes" button to commit to git.',
+          "success"
+        );
+      } else {
+        this.showStatus(
+          "❌ Failed to save AI changes: " + (result.error || result.message),
+          "error"
+        );
+      }
+    } catch (error) {
+      this.showStatus("❌ Network error while saving", "error");
+      console.error("Save selective AI changes error:", error);
     }
-    
-    removePreviewIndicators() {
-        // Remove preview indicators from all elements that have them
-        const previewElements = document.querySelectorAll('.admin-preview-active');
-        previewElements.forEach(element => {
-            element.classList.remove('admin-preview-active');
+  }
+
+  discardSelectiveAIChanges() {
+    console.log("🗑️ Discarding selective AI preview...");
+
+    try {
+      // Remove all selected elements from the DOM
+      if (this.currentPreview?.elementsToEdit) {
+        this.currentPreview.elementsToEdit.forEach((elementInfo, index) => {
+          if (elementInfo.element) {
+            elementInfo.element.remove();
+            console.log(`🗑️ Removed element ${index}:`, elementInfo.tag);
+          }
         });
-        console.log(`🔧 Removed preview indicators from ${previewElements.length} elements`);
+      }
+
+      this.showStatus("🗑️ Elements removed successfully", "success");
+    } catch (error) {
+      console.error("❌ Error removing elements:", error);
+      this.showStatus("❌ Error removing elements", "error");
     }
-    
-    resetAIEditSection() {
-        // Reset the AI edit section to original state
-        this.aiEditSection.innerHTML = `
+
+    // Clear preview data
+    this.currentPreview = null;
+    this.originalElementContent = null;
+
+    // Reset AI edit section
+    this.resetAIEditSection();
+
+    // Clear selections and hide editing interface
+    this.selectedElements = [];
+    this.renderSelected();
+    this.aiEditSection.style.display = "none";
+    this.editingIndex = -1;
+
+    // Reset toolbar position since selections are cleared
+    this.resetToolbarPosition();
+
+    console.log("🗑️ Elements discarded and removed from DOM");
+  }
+
+  removePreviewIndicators() {
+    // Remove preview indicators from all elements that have them
+    const previewElements = document.querySelectorAll(".admin-preview-active");
+    previewElements.forEach((element) => {
+      element.classList.remove("admin-preview-active");
+    });
+    console.log(
+      `🔧 Removed preview indicators from ${previewElements.length} elements`
+    );
+  }
+
+  resetAIEditSection() {
+    // Reset the AI edit section to original state
+    this.aiEditSection.innerHTML = `
             <div class="batch-edit-options">
                 <label class="batch-checkbox">
                     <input type="checkbox" id="batch-edit-mode" />
@@ -895,244 +1634,945 @@ class AdminToolbar {
                 </button>
             </div>
         `;
-        
-        // Re-attach event listeners
-        this.batchEditCheckbox = document.getElementById('batch-edit-mode');
-        this.promptInput = document.getElementById('prompt-input');
-        this.submitPromptBtn = document.getElementById('submit-prompt');
-        this.cancelAiBtn = document.getElementById('cancel-ai-btn');
-        this.submitPromptBtn.addEventListener('click', () => this.submitPrompt());
-        this.cancelAiBtn.addEventListener('click', () => this.cancelAiEdit());
-        
-        // Clear prompt input
-        if (this.promptInput) {
-            this.promptInput.value = '';
-        }
+
+    // Re-attach event listeners
+    this.batchEditCheckbox = document.getElementById("batch-edit-mode");
+    this.promptInput = document.getElementById("prompt-input");
+    this.submitPromptBtn = document.getElementById("submit-prompt");
+    this.cancelAiBtn = document.getElementById("cancel-ai-btn");
+    this.submitPromptBtn.addEventListener("click", () => this.submitPrompt());
+    this.cancelAiBtn.addEventListener("click", () => this.cancelAiEdit());
+
+    // Clear prompt input
+    if (this.promptInput) {
+      this.promptInput.value = "";
     }
-    
-    generateBatchPrompt(userPrompt, elementsToEdit, isBatchMode) {
-        const elements = elementsToEdit.map((el, index) => {
-            return `Element ${index + 1} - ${el.tag}${el.id ? '#' + el.id : ''}${el.classes ? '.' + el.classes.replace(/\s+/g, '.') : ''}: "${el.text}"`;
-        }).join('\n');
-        
-        const batchInstruction = isBatchMode && elementsToEdit.length > 1 ? 
-            `\n\nBATCH MODE: Apply the same changes to ALL ${elementsToEdit.length} selected elements consistently.` : 
-            '';
-        
-        return `User Request: ${userPrompt}\n\nSelected Elements:\n${elements}${batchInstruction}\n\nIMPORTANT: Preserve all existing CSS classes, styling, and theme elements. Only modify the specific content requested while maintaining the current design and layout.`;
-    }
-    
-    async sendToBackend(prompt, elementsToEdit = null) {
-        const elements = elementsToEdit || this.selectedElements;
-        const isBatchMode = elements.length > 1;
-        
+  }
+
+  generateBatchPrompt(userPrompt, elementsToEdit, isBatchMode) {
+    const elements = elementsToEdit
+      .map((el, index) => {
+        return `Element ${index + 1} - ${el.tag}${el.id ? "#" + el.id : ""}${
+          el.classes ? "." + el.classes.replace(/\s+/g, ".") : ""
+        }: "${el.text}"`;
+      })
+      .join("\n");
+
+    const batchInstruction =
+      isBatchMode && elementsToEdit.length > 1
+        ? `\n\nBATCH MODE: Apply the same changes to ALL ${elementsToEdit.length} selected elements consistently.`
+        : "";
+
+    return `User Request: ${userPrompt}\n\nSelected Elements:\n${elements}${batchInstruction}\n\nIMPORTANT: Preserve all existing CSS classes, styling, and theme elements. Only modify the specific content requested while maintaining the current design and layout.`;
+  }
+
+  async sendToBackend(prompt, elementsToEdit = null) {
+    const elements = elementsToEdit || this.selectedElements;
+    const isBatchMode = elements.length > 1;
+
+    try {
+      const response = await fetch("/api/admin-edit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: prompt,
+          elements: elements.map((el) => ({
+            tag: el.tag,
+            id: el.id,
+            classes: el.classes,
+            text: el.text,
+            originalText: el.originalText,
+            attributes: el.attributes,
+          })),
+          url: window.location.pathname,
+          batchMode: isBatchMode,
+        }),
+      });
+
+      console.log("response", response);
+
+      // Check if response is OK
+      if (!response.ok) {
+        // Try to parse error response
+        let errorMessage = `HTTP error! status: ${response.status}`;
         try {
-            const response = await fetch('/api/admin-edit', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    prompt: prompt,
-                    elements: elements.map(el => ({
-                        tag: el.tag,
-                        id: el.id,
-                        classes: el.classes,
-                        text: el.text,
-                        originalText: el.originalText,
-                        attributes: el.attributes
-                    })),
-                    url: window.location.pathname,
-                    batchMode: isBatchMode
-                })
-            });
-            
-            console.log('response', response);
-            
-            // Check if response is OK
-            if (!response.ok) {
-                // Try to parse error response
-                let errorMessage = `HTTP error! status: ${response.status}`;
-                try {
-                    const errorData = await response.json();
-                    errorMessage = errorData.error || errorMessage;
-                } catch (e) {
-                    // If we can't parse JSON, use the status text
-                    errorMessage = response.statusText || errorMessage;
-                }
-                throw new Error(errorMessage);
-            }
-            
-            return await response.json();
-        } catch (error) {
-            console.error('Error in sendToBackend:', error);
-            throw error;
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          // If we can't parse JSON, use the status text
+          errorMessage = response.statusText || errorMessage;
         }
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error in sendToBackend:", error);
+      throw error;
     }
-    
-    generateElementSelector(element) {
-        // Generate a unique selector for the element
-        let selector = element.tag;
-        
-        if (element.id) {
-            selector += '#' + element.id;
-        }
-        
-        if (element.classes) {
-            selector += '.' + element.classes.split(' ').join('.');
-        }
-        
-        return selector;
+  }
+
+  generateElementSelector(element) {
+    // Generate a unique selector for the element
+    let selector = element.tag;
+
+    if (element.id) {
+      selector += "#" + element.id;
     }
-    
-    cancelTextEdit() {
-        // Restore original content if editing
-        if (this.editingIndex >= 0 && this.cleanupEditableElement) {
-            const elementInfo = this.selectedElements[this.editingIndex];
-            if (elementInfo && elementInfo.element) {
-                // Restore original HTML structure to preserve formatting
-                elementInfo.element.innerHTML = elementInfo.originalHTML;
-                elementInfo.text = elementInfo.originalText;
-                console.log('🔄 Restored original HTML structure');
-            }
+
+    if (element.classes) {
+      selector += "." + element.classes.split(" ").join(".");
+    }
+
+    return selector;
+  }
+
+  cancelTextEdit() {
+    console.log('❌ Cancel button clicked! editingIndex:', this.editingIndex);
+    // Restore original content and position if editing
+    if (this.editingIndex >= 0) {
+      const elementInfo = this.selectedElements[this.editingIndex];
+      if (elementInfo && elementInfo.element) {
+        // Restore original HTML structure to preserve formatting
+        elementInfo.element.innerHTML = elementInfo.originalHTML;
+        elementInfo.text = elementInfo.originalText;
+        
+        // Restore original position (remove absolute positioning from drag)
+        elementInfo.element.style.removeProperty('position');
+        elementInfo.element.style.removeProperty('left');
+        elementInfo.element.style.removeProperty('top');
+        elementInfo.element.style.removeProperty('z-index');
+        elementInfo.element.style.removeProperty('cursor');
+        
+        // Clean up any contentEditable state
+        if (this.cleanupEditableElement) {
+          this.cleanupEditableElement();
+          this.cleanupEditableElement = null;
         }
         
-        // Clear all selections and remove borders
-        this.clearAllSelections();
-        
-        this.showStatus('Edit cancelled - original structure restored', 'info');
+        console.log("🔄 Restored original HTML structure and position");
+      }
     }
-    
-    setAIProcessingState(isProcessing) {
-        if (this.submitPromptBtn) {
-            if (isProcessing) {
-                this.submitPromptBtn.disabled = true;
-                this.submitPromptBtn.innerHTML = `
+
+    // Clear all selections and hide toolbar completely
+    this.clearAllSelections();
+    this.hide();
+    this.showStatus("Edit cancelled - element restored to original state", "info");
+  }
+
+  setAIProcessingState(isProcessing) {
+    if (this.submitPromptBtn) {
+      if (isProcessing) {
+        this.submitPromptBtn.disabled = true;
+        this.submitPromptBtn.innerHTML = `
                     <div class="spinner"></div>
                     Apply AI Changes
                 `;
-                this.submitPromptBtn.style.cursor = 'not-allowed';
-            } else {
-                this.submitPromptBtn.disabled = false;
-                this.submitPromptBtn.innerHTML = '✨ Apply AI Changes';
-                this.submitPromptBtn.style.cursor = 'pointer';
-            }
-        }
-        
-        if (this.cancelAiBtn) {
-            this.cancelAiBtn.disabled = isProcessing;
-            this.cancelAiBtn.style.opacity = isProcessing ? '0.5' : '1';
-            this.cancelAiBtn.style.cursor = isProcessing ? 'not-allowed' : 'pointer';
-        }
-        
-        console.log(`🔄 AI processing state: ${isProcessing ? 'enabled' : 'disabled'}`);
+        this.submitPromptBtn.style.cursor = "not-allowed";
+      } else {
+        this.submitPromptBtn.disabled = false;
+        this.submitPromptBtn.innerHTML = "✨ Apply AI Changes";
+        this.submitPromptBtn.style.cursor = "pointer";
+      }
+    }
+
+    if (this.cancelAiBtn) {
+      this.cancelAiBtn.disabled = isProcessing;
+      this.cancelAiBtn.style.opacity = isProcessing ? "0.5" : "1";
+      this.cancelAiBtn.style.cursor = isProcessing ? "not-allowed" : "pointer";
+    }
+
+    console.log(
+      `🔄 AI processing state: ${isProcessing ? "enabled" : "disabled"}`
+    );
+  }
+
+  showAIProcessingOnElements(elementsToEdit) {
+    elementsToEdit.forEach((elementInfo) => {
+      if (elementInfo.element) {
+        // Store current content for restoration
+        elementInfo.processingBackupHTML = elementInfo.element.innerHTML;
+
+        // Replace element content with processing message
+        elementInfo.element.innerHTML = "AI is processing...";
+        elementInfo.element.classList.add("ai-processing-element");
+
+        console.log("🤖 Replaced element content with processing message");
+      }
+    });
+  }
+
+  hideAIProcessingOnElements(elementsToEdit) {
+    elementsToEdit.forEach((elementInfo) => {
+      if (elementInfo.processingBackupHTML !== undefined) {
+        // Restore original content
+        elementInfo.element.innerHTML = elementInfo.processingBackupHTML;
+        elementInfo.element.classList.remove("ai-processing-element");
+        delete elementInfo.processingBackupHTML;
+
+        console.log("🔄 Restored original element content");
+      }
+    });
+  }
+
+  cancelAiEdit() {
+    console.log('❌ AI Cancel button clicked! editingIndex:', this.editingIndex);
+    
+    // Clear the AI prompt input
+    if (this.promptInput) {
+      this.promptInput.value = "";
     }
     
-    showAIProcessingOnElements(elementsToEdit) {
-        elementsToEdit.forEach(elementInfo => {
-            if (elementInfo.element) {
-                // Store current content for restoration
-                elementInfo.processingBackupHTML = elementInfo.element.innerHTML;
-                
-                // Replace element content with processing message
-                elementInfo.element.innerHTML = 'AI is processing...';
-                elementInfo.element.classList.add('ai-processing-element');
-                
-                console.log('🤖 Replaced element content with processing message');
-            }
+    // Restore original content and position if editing (same as manual edit cancel)
+    if (this.editingIndex >= 0) {
+      const elementInfo = this.selectedElements[this.editingIndex];
+      if (elementInfo && elementInfo.element) {
+        // Restore original HTML structure to preserve formatting
+        elementInfo.element.innerHTML = elementInfo.originalHTML;
+        elementInfo.text = elementInfo.originalText;
+        
+        // Restore original position (remove absolute positioning from drag)
+        elementInfo.element.style.removeProperty('position');
+        elementInfo.element.style.removeProperty('left');
+        elementInfo.element.style.removeProperty('top');
+        elementInfo.element.style.removeProperty('z-index');
+        elementInfo.element.style.removeProperty('cursor');
+        
+        // Clean up any contentEditable state
+        if (this.cleanupEditableElement) {
+          this.cleanupEditableElement();
+          this.cleanupEditableElement = null;
+        }
+        
+        console.log("🔄 AI Cancel - Restored original HTML structure and position");
+      }
+    }
+
+    // Clear all selections and hide toolbar completely (same as manual edit cancel)
+    this.clearAllSelections();
+    this.hide();
+    this.showStatus("AI edit cancelled - element restored to original state", "info");
+  }
+
+  highlightElement(element) {
+    this.clearHighlight();
+    element.style.outline = "2px solid #3b82f6";
+    element.style.outlineOffset = "2px";
+    element.style.backgroundColor = "rgba(59, 130, 246, 0.1)";
+    this.highlightedElement = element;
+  }
+
+  clearHighlight() {
+    if (this.highlightedElement) {
+      this.highlightedElement.style.outline = "";
+      this.highlightedElement.style.outlineOffset = "";
+      this.highlightedElement.style.backgroundColor = "";
+      this.highlightedElement = null;
+    }
+  }
+
+  isUIElement(element) {
+    return (
+      element.closest("#admin-toolbar") ||
+      element.closest("#admin-toolbar-button") ||
+      element.closest("#lintai-watermark") ||
+      element.closest("#admin-status-display")
+    );
+  }
+
+  setState(newState) {
+    this.state = newState;
+    this.container.className = `admin-toolbar-popup ${newState}`;
+    if (this.isVisible) {
+      this.container.classList.add("visible");
+    }
+  }
+
+  showStatus(message, type = "info") {
+    // Create or update status display
+    let statusDisplay = document.getElementById("admin-status-display");
+    if (!statusDisplay) {
+      statusDisplay = document.createElement("div");
+      statusDisplay.id = "admin-status-display";
+      statusDisplay.className = "admin-status-display";
+      document.body.appendChild(statusDisplay);
+    }
+
+    statusDisplay.textContent = message;
+    statusDisplay.className = `admin-status-display visible ${type}`;
+
+    // Auto-hide after 5 seconds for non-loading states
+    if (type !== "loading") {
+      setTimeout(() => {
+        statusDisplay.classList.remove("visible");
+      }, 5000);
+    }
+
+    console.log("📢", message);
+  }
+
+  triggerImageUpload() {
+    this.uploadInput.click();
+  }
+
+  triggerImageReplace() {
+    if (this.editingIndex < 0) {
+      this.showStatus("Please select an image first", "error");
+      return;
+    }
+
+    const currentElement = this.selectedElements[this.editingIndex];
+    if (!currentElement || !currentElement.isImage) {
+      this.showStatus("Selected element is not an image", "error");
+      return;
+    }
+
+    this.replaceImageInput.click();
+  }
+
+  async handleImageReplace(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = [
+      "image/png",
+      "image/jpeg",
+      "image/jpg",
+      "image/gif",
+      "image/svg+xml",
+      "image/webp",
+    ];
+    if (!allowedTypes.includes(file.type)) {
+      this.showStatus(
+        "Invalid file type. Please upload an image (PNG, JPG, GIF, SVG, WebP)",
+        "error"
+      );
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      this.showStatus("File too large. Maximum size is 5MB", "error");
+      return;
+    }
+
+    this.showStatus("Replacing image...", "loading");
+
+    try {
+      // Determine project path from current URL
+      const pathname = window.location.pathname;
+      const parts = pathname.replace(/^\/+|\/+$/g, "").split("/");
+
+      let projectPath;
+      if (parts.length >= 2 && parts[0].startsWith("user_")) {
+        const userDir = parts[0];
+        const projectDir = parts[1].replace("/admin", "").replace(".html", "");
+        projectPath = `/Users/mac/Documents/workspace/lint/standalone-admin-server/projects/${userDir}/${projectDir}`;
+      } else if (parts.length >= 1 && parts[0]) {
+        const projectDir = parts[0].replace("/admin", "").replace(".html", "");
+        projectPath = `/Users/mac/Documents/workspace/lint/standalone-admin-server/projects/${projectDir}`;
+      } else {
+        this.showStatus("Cannot determine project path from URL", "error");
+        return;
+      }
+
+      // Upload the new image
+      const formData = new FormData();
+      formData.append("image", file);
+      formData.append("project_path", projectPath);
+
+      const uploadResponse = await fetch("/api/upload-image", {
+        method: "POST",
+        body: formData,
+      });
+
+      const uploadResult = await uploadResponse.json();
+
+      if (!uploadResult.success) {
+        this.showStatus(`❌ Upload failed: ${uploadResult.error}`, "error");
+        return;
+      }
+
+      // Get the current element
+      const currentElement = this.selectedElements[this.editingIndex];
+      const imgElement = currentElement.element;
+      const oldSrc = imgElement.getAttribute("src");
+
+      // Replace the image src in the HTML file
+      const response = await fetch("/api/replace-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: window.location.pathname,
+          oldImageSrc: oldSrc,
+          newImageSrc: uploadResult.path,
+          elementSelector: this.generateElementSelector(currentElement),
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Update the DOM to show the new image
+        imgElement.src = uploadResult.path;
+
+        // Update stored element info
+        currentElement.attributes.src = uploadResult.path;
+        currentElement.originalHTML = imgElement.outerHTML;
+
+        this.showStatus(`✅ Image replaced successfully!`, "success");
+
+        // Increment edit counter
+        if (window.incrementEditCount) {
+          window.incrementEditCount();
+        }
+      } else {
+        this.showStatus(`❌ Failed to replace: ${result.error}`, "error");
+      }
+    } catch (error) {
+      this.showStatus("❌ Network error during replacement", "error");
+      console.error("Replace error:", error);
+    } finally {
+      // Reset file input
+      this.replaceImageInput.value = "";
+    }
+  }
+
+  async deleteSelectedImage() {
+    if (this.editingIndex < 0) {
+      this.showStatus("Please select an image first", "error");
+      return;
+    }
+
+    const currentElement = this.selectedElements[this.editingIndex];
+    if (!currentElement || !currentElement.isImage) {
+      this.showStatus("Selected element is not an image", "error");
+      return;
+    }
+
+    if (
+      !confirm("Are you sure you want to delete this image from the HTML file?")
+    ) {
+      return;
+    }
+
+    this.showStatus("Deleting image...", "loading");
+
+    try {
+      const imgElement = currentElement.element;
+      const imageSrc = imgElement.getAttribute("src");
+
+      const response = await fetch("/api/delete-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: window.location.pathname,
+          imageSrc: imageSrc,
+          elementSelector: this.generateElementSelector(currentElement),
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Remove the image from DOM
+        imgElement.remove();
+
+        // Remove from selected elements
+        this.selectedElements.splice(this.editingIndex, 1);
+        this.editingIndex = -1;
+
+        // Update UI
+        this.renderSelected();
+        this.resetToolbarPosition();
+
+        this.showStatus("✅ Image deleted successfully!", "success");
+
+        // Increment edit counter
+        if (window.incrementEditCount) {
+          window.incrementEditCount();
+        }
+      } else {
+        this.showStatus(`❌ Failed to delete: ${result.error}`, "error");
+      }
+    } catch (error) {
+      this.showStatus("❌ Network error during deletion", "error");
+      console.error("Delete error:", error);
+    }
+  }
+
+  async handleImageUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = [
+      "image/png",
+      "image/jpeg",
+      "image/jpg",
+      "image/gif",
+      "image/svg+xml",
+      "image/webp",
+    ];
+    if (!allowedTypes.includes(file.type)) {
+      this.showStatus(
+        "Invalid file type. Please upload an image (PNG, JPG, GIF, SVG, WebP)",
+        "error"
+      );
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      this.showStatus("File too large. Maximum size is 5MB", "error");
+      return;
+    }
+
+    this.showStatus("Uploading image...", "loading");
+
+    try {
+      // Determine project path from current URL
+      const pathname = window.location.pathname;
+      const parts = pathname.replace(/^\/+|\/+$/g, "").split("/");
+
+      // Parse URL to get project path (similar to backend logic)
+      let projectPath;
+      if (parts.length >= 2 && parts[0].startsWith("user_")) {
+        // Format: /user_xxx/project_name
+        const userDir = parts[0];
+        const projectDir = parts[1].replace("/admin", "").replace(".html", "");
+        projectPath = `/Users/mac/Documents/workspace/lint/standalone-admin-server/projects/${userDir}/${projectDir}`;
+      } else if (parts.length >= 1 && parts[0]) {
+        // Format: /project_name
+        const projectDir = parts[0].replace("/admin", "").replace(".html", "");
+        projectPath = `/Users/mac/Documents/workspace/lint/standalone-admin-server/projects/${projectDir}`;
+      } else {
+        this.showStatus("Cannot determine project path from URL", "error");
+        return;
+      }
+
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append("image", file);
+      formData.append("project_path", projectPath);
+
+      const response = await fetch("/api/upload-image", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        this.showStatus(`✅ Image uploaded: ${result.filename}`, "success");
+
+        // Insert image into the page
+        this.insertImageIntoPage(result.path, result.filename);
+
+        // Note: Edit counter will be incremented only when image is saved to HTML file
+      } else {
+        this.showStatus(`❌ Upload failed: ${result.error}`, "error");
+      }
+    } catch (error) {
+      this.showStatus("❌ Network error during upload", "error");
+      console.error("Upload error:", error);
+    } finally {
+      // Reset file input
+      if (event.target) {
+        event.target.value = "";
+      }
+    }
+  }
+
+  copyToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard
+        .writeText(text)
+        .then(() => {
+          console.log("✅ Copied to clipboard:", text);
+        })
+        .catch((err) => {
+          console.error("Failed to copy to clipboard:", err);
+          this.fallbackCopyToClipboard(text);
         });
+    } else {
+      this.fallbackCopyToClipboard(text);
     }
-    
-    hideAIProcessingOnElements(elementsToEdit) {
-        elementsToEdit.forEach(elementInfo => {
-            if (elementInfo.processingBackupHTML !== undefined) {
-                // Restore original content
-                elementInfo.element.innerHTML = elementInfo.processingBackupHTML;
-                elementInfo.element.classList.remove('ai-processing-element');
-                delete elementInfo.processingBackupHTML;
-                
-                console.log('🔄 Restored original element content');
-            }
-        });
+  }
+
+  fallbackCopyToClipboard(text) {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-999999px";
+    document.body.appendChild(textArea);
+    textArea.select();
+    try {
+      document.execCommand("copy");
+      console.log("✅ Copied to clipboard (fallback):", text);
+    } catch (err) {
+      console.error("Fallback copy failed:", err);
     }
+    document.body.removeChild(textArea);
+  }
+
+  insertImageIntoPage(imagePath, filename) {
+    // Create image wrapper with draggable and resizable capabilities
+    const imageWrapper = document.createElement("div");
+    imageWrapper.className = "admin-uploaded-image-wrapper";
+    imageWrapper.style.position = "absolute";
     
-    cancelAiEdit() {
-        // Clear the AI prompt input
-        if (this.promptInput) {
-            this.promptInput.value = '';
+    // Position at current scroll position + center of viewport
+    const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+    const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // Position in center of current viewport
+    imageWrapper.style.left = (scrollX + viewportWidth / 2 - 150) + "px"; // 150px = half of 300px image width
+    imageWrapper.style.top = (scrollY + viewportHeight / 2 - 100) + "px"; // 100px = approximate half of image height
+    imageWrapper.style.zIndex = "1000";
+    imageWrapper.style.cursor = "move";
+
+    // Create the image element
+    const img = document.createElement("img");
+    img.src = imagePath;
+    img.alt = filename;
+    img.className = "admin-uploaded-image";
+    img.style.width = "300px";
+    img.style.height = "auto";
+    img.style.display = "block";
+    img.style.maxWidth = "100%";
+
+    // Create resize handles
+    const resizeHandle = document.createElement("div");
+    resizeHandle.className = "admin-image-resize-handle";
+    resizeHandle.innerHTML = "⇲";
+    resizeHandle.style.position = "absolute";
+    resizeHandle.style.bottom = "0";
+    resizeHandle.style.right = "0";
+    resizeHandle.style.width = "20px";
+    resizeHandle.style.height = "20px";
+    resizeHandle.style.cursor = "nwse-resize";
+    resizeHandle.style.background = "#3b82f6";
+    resizeHandle.style.color = "white";
+    resizeHandle.style.borderRadius = "0 0 4px 0";
+    resizeHandle.style.display = "flex";
+    resizeHandle.style.alignItems = "center";
+    resizeHandle.style.justifyContent = "center";
+    resizeHandle.style.fontSize = "14px";
+
+    // Create lock button
+    const lockBtn = document.createElement("button");
+    lockBtn.className = "admin-image-lock-btn";
+    lockBtn.innerHTML = "🔒";
+    lockBtn.title = "Lock image position";
+    lockBtn.style.position = "absolute";
+    lockBtn.style.top = "-10px";
+    lockBtn.style.left = "-10px";
+    lockBtn.style.width = "24px";
+    lockBtn.style.height = "24px";
+    lockBtn.style.background = "#3b82f6";
+    lockBtn.style.color = "white";
+    lockBtn.style.border = "none";
+    lockBtn.style.borderRadius = "50%";
+    lockBtn.style.cursor = "pointer";
+    lockBtn.style.fontSize = "12px";
+    lockBtn.style.display = "flex";
+    lockBtn.style.alignItems = "center";
+    lockBtn.style.justifyContent = "center";
+    lockBtn.style.boxShadow = "0 2px 4px rgba(0,0,0,0.2)";
+
+    // Create delete button
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "admin-image-delete-btn";
+    deleteBtn.innerHTML = "✖";
+    deleteBtn.title = "Remove image";
+    deleteBtn.style.position = "absolute";
+    deleteBtn.style.top = "-10px";
+    deleteBtn.style.right = "-10px";
+    deleteBtn.style.width = "24px";
+    deleteBtn.style.height = "24px";
+    deleteBtn.style.background = "#ef4444";
+    deleteBtn.style.color = "white";
+    deleteBtn.style.border = "none";
+    deleteBtn.style.borderRadius = "50%";
+    deleteBtn.style.cursor = "pointer";
+    deleteBtn.style.fontSize = "12px";
+    deleteBtn.style.display = "flex";
+    deleteBtn.style.alignItems = "center";
+    deleteBtn.style.justifyContent = "center";
+    deleteBtn.style.boxShadow = "0 2px 4px rgba(0,0,0,0.2)";
+
+    // Add selection border
+    imageWrapper.style.border = "2px dashed #3b82f6";
+    imageWrapper.style.padding = "4px";
+    imageWrapper.style.background = "rgba(59, 130, 246, 0.05)";
+
+    // Append elements
+    imageWrapper.appendChild(img);
+    imageWrapper.appendChild(resizeHandle);
+    imageWrapper.appendChild(lockBtn);
+    imageWrapper.appendChild(deleteBtn);
+    document.body.appendChild(imageWrapper);
+
+    // Store original data
+    imageWrapper.dataset.imagePath = imagePath;
+    imageWrapper.dataset.filename = filename;
+
+    // Make draggable
+    this.makeDraggable(imageWrapper);
+
+    // Make resizable
+    this.makeResizable(imageWrapper, img, resizeHandle);
+
+    // Lock functionality
+    lockBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.lockImagePosition(imageWrapper, img, imagePath);
+    });
+
+    // Delete functionality
+    deleteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (confirm("Remove this image from the page?")) {
+        imageWrapper.remove();
+        this.showStatus("Image removed from page", "info");
+        // No need to adjust edit counter since upload doesn't increment it
+      }
+    });
+
+    this.showStatus(
+      "✅ Image inserted! Drag to reposition, resize from corner",
+      "success"
+    );
+    console.log("✅ Image inserted into page:", imagePath);
+  }
+
+  makeDraggable(element) {
+    let isDragging = false;
+    let currentX;
+    let currentY;
+    let initialX;
+    let initialY;
+    let xOffset = 0;
+    let yOffset = 0;
+
+    element.addEventListener("mousedown", (e) => {
+      // Don't drag if clicking on resize handle or delete button
+      if (
+        e.target.classList.contains("admin-image-resize-handle") ||
+        e.target.classList.contains("admin-image-delete-btn")
+      ) {
+        return;
+      }
+
+      initialX = e.clientX - xOffset;
+      initialY = e.clientY - yOffset;
+
+      if (
+        e.target === element ||
+        e.target.classList.contains("admin-uploaded-image")
+      ) {
+        isDragging = true;
+        element.style.cursor = "grabbing";
+      }
+    });
+
+    document.addEventListener("mousemove", (e) => {
+      if (isDragging) {
+        e.preventDefault();
+        currentX = e.clientX - initialX;
+        currentY = e.clientY - initialY;
+
+        xOffset = currentX;
+        yOffset = currentY;
+
+        element.style.transform = `translate(${currentX}px, ${currentY}px)`;
+      }
+    });
+
+    document.addEventListener("mouseup", () => {
+      if (isDragging) {
+        isDragging = false;
+        element.style.cursor = "move";
+      }
+    });
+  }
+
+  makeResizable(wrapper, img, handle) {
+    let isResizing = false;
+    let originalWidth = 0;
+    let originalHeight = 0;
+    let originalX = 0;
+    let originalY = 0;
+    let originalMouseX = 0;
+    let originalMouseY = 0;
+
+    handle.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      isResizing = true;
+
+      const rect = img.getBoundingClientRect();
+      originalWidth = rect.width;
+      originalHeight = rect.height;
+      originalX = rect.left;
+      originalY = rect.top;
+      originalMouseX = e.clientX;
+      originalMouseY = e.clientY;
+
+      document.body.style.cursor = "nwse-resize";
+    });
+
+    document.addEventListener("mousemove", (e) => {
+      if (isResizing) {
+        e.preventDefault();
+        const deltaX = e.clientX - originalMouseX;
+        const deltaY = e.clientY - originalMouseY;
+
+        // Use the larger delta to maintain aspect ratio
+        const delta = Math.max(deltaX, deltaY);
+        const newWidth = originalWidth + delta;
+
+        if (newWidth > 50) {
+          // Minimum width
+          img.style.width = newWidth + "px";
         }
-        
-        // Clear all selections and remove borders
-        this.clearAllSelections();
-        
-        this.showStatus('AI edit cancelled - selections cleared', 'info');
+      }
+    });
+
+    document.addEventListener("mouseup", () => {
+      if (isResizing) {
+        isResizing = false;
+        document.body.style.cursor = "";
+      }
+    });
+  }
+
+  lockImagePosition(wrapper, img, imagePath) {
+    console.log("🔒 Locking image position:", imagePath);
+    
+    // Find the lock button and update its appearance
+    const lockBtn = wrapper.querySelector('.admin-image-lock-btn');
+    if (lockBtn) {
+      lockBtn.innerHTML = "🔓";
+      lockBtn.title = "Image position locked";
+      lockBtn.style.background = "#10b981";
+      lockBtn.disabled = true;
+      lockBtn.style.cursor = "default";
+      lockBtn.style.opacity = "0.8";
     }
     
-    highlightElement(element) {
-        this.clearHighlight();
-        element.style.outline = '2px solid #3b82f6';
-        element.style.outlineOffset = '2px';
-        element.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
-        this.highlightedElement = element;
+    // Remove drag and resize functionality
+    wrapper.style.cursor = "default";
+    const resizeHandle = wrapper.querySelector('.admin-image-resize-handle');
+    if (resizeHandle) {
+      resizeHandle.style.display = "none";
     }
     
-    clearHighlight() {
-        if (this.highlightedElement) {
-            this.highlightedElement.style.outline = '';
-            this.highlightedElement.style.outlineOffset = '';
-            this.highlightedElement.style.backgroundColor = '';
-            this.highlightedElement = null;
+    // Change border to solid to indicate locked state
+    wrapper.style.border = "2px solid #10b981";
+    wrapper.style.background = "rgba(16, 185, 129, 0.05)";
+    
+    // Mark as locked in dataset
+    wrapper.dataset.locked = "true";
+    
+    // Increment edit counter to show save/undo buttons
+    if (window.incrementEditCount) {
+      window.incrementEditCount();
+    }
+    
+    this.showStatus("🔒 Image position locked! Use Save Changes to commit to file", "success");
+  }
+
+  async saveImageToHTML(wrapper, img, imagePath) {
+    this.showStatus("Saving image to HTML...", "loading");
+
+    try {
+      // Get the computed position and size
+      const wrapperRect = wrapper.getBoundingClientRect();
+      const imgRect = img.getBoundingClientRect();
+
+      // Extract transform values
+      const transform = window.getComputedStyle(wrapper).transform;
+      let translateX = 0;
+      let translateY = 0;
+
+      if (transform && transform !== "none") {
+        const matrix = transform.match(/matrix\((.+)\)/);
+        if (matrix) {
+          const values = matrix[1].split(", ");
+          translateX = parseFloat(values[4]) || 0;
+          translateY = parseFloat(values[5]) || 0;
         }
-    }
-    
-    isUIElement(element) {
-        return element.closest('#admin-toolbar') || 
-               element.closest('#admin-toolbar-button') ||
-               element.closest('#lintai-watermark') ||
-               element.closest('#admin-status-display');
-    }
-    
-    setState(newState) {
-        this.state = newState;
-        this.container.className = `admin-toolbar-popup ${newState}`;
-        if (this.isVisible) {
-            this.container.classList.add('visible');
+      }
+
+      // Calculate actual position (accounting for initial positioning)
+      const actualLeft = wrapperRect.left + window.scrollX;
+      const actualTop = wrapperRect.top + window.scrollY;
+
+      // Get image width
+      const imageWidth = img.style.width || "300px";
+
+      // Create clean HTML for the image
+      const imageHTML = `<img src="${imagePath}" alt="${wrapper.dataset.filename}" style="position: absolute; left: ${actualLeft}px; top: ${actualTop}px; width: ${imageWidth}; z-index: 100;">`;
+
+      // Determine target element (body or a container)
+      let targetSelector = "body";
+      let insertionMethod = "append"; // append to end of body
+
+      const response = await fetch("/api/save-image-to-html", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: window.location.pathname,
+          imageHTML: imageHTML,
+          targetSelector: targetSelector,
+          insertionMethod: insertionMethod,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        this.showStatus("✅ Image saved to HTML file!", "success");
+
+        // Remove the temporary wrapper and replace with permanent image
+        wrapper.remove();
+
+        // Increment edit counter
+        if (window.incrementEditCount) {
+          window.incrementEditCount();
         }
+
+        // Show message about needing to commit
+        setTimeout(() => {
+          this.showStatus('Use "Save Changes" button to commit to git', "info");
+        }, 2000);
+      } else {
+        this.showStatus(`❌ Failed to save: ${result.error}`, "error");
+      }
+    } catch (error) {
+      this.showStatus("❌ Network error while saving", "error");
+      console.error("Save image error:", error);
     }
-    
-    showStatus(message, type = 'info') {
-        // Create or update status display
-        let statusDisplay = document.getElementById('admin-status-display');
-        if (!statusDisplay) {
-            statusDisplay = document.createElement('div');
-            statusDisplay.id = 'admin-status-display';
-            statusDisplay.className = 'admin-status-display';
-            document.body.appendChild(statusDisplay);
-        }
-        
-        statusDisplay.textContent = message;
-        statusDisplay.className = `admin-status-display visible ${type}`;
-        
-        // Auto-hide after 5 seconds for non-loading states
-        if (type !== 'loading') {
-            setTimeout(() => {
-                statusDisplay.classList.remove('visible');
-            }, 5000);
-        }
-        
-        console.log('📢', message);
-    }
-    
-    
-    injectStyles() {
-        const styleId = 'admin-toolbar-styles';
-        if (document.getElementById(styleId)) return;
-        
-        const style = document.createElement('style');
-        style.id = styleId;
-        style.textContent = `
+  }
+
+  injectStyles() {
+    const styleId = "admin-toolbar-styles";
+    if (document.getElementById(styleId)) return;
+
+    const style = document.createElement("style");
+    style.id = styleId;
+    style.textContent = `
             /* Modern Admin Toolbar - Minimal Clean Design */
             .admin-toolbar-popup {
                 position: fixed;
-                bottom: 110px;
+                bottom: 20px;
                 right: 20px;
                 width: 360px;
                 max-height: 520px;
@@ -1458,22 +2898,125 @@ class AdminToolbar {
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             }
             
+            /* Image Upload Section */
+            .image-upload-section {
+                border-bottom: 1px solid #f1f5f9;
+                padding-bottom: 12px;
+            }
+
+            .upload-btn {
+                width: 100%;
+                background: #8b5cf6;
+                border: none;
+                border-radius: 10px;
+                padding: 12px 18px;
+                color: white;
+                font-size: 13px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+            }
+
+            .upload-btn:hover {
+                background: #7c3aed;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+            }
+
+            /* Image Actions Section */
+            .image-actions-section {
+                border-bottom: 1px solid #f1f5f9;
+                padding-bottom: 12px;
+                display: flex;
+                gap: 8px;
+            }
+
+            .replace-btn {
+                flex: 1;
+                background: #3b82f6;
+                border: none;
+                border-radius: 10px;
+                padding: 12px 18px;
+                color: white;
+                font-size: 13px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+            }
+
+            .replace-btn:hover {
+                background: #2563eb;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            }
+
+            .delete-btn {
+                flex: 1;
+                background: #ef4444;
+                border: none;
+                border-radius: 10px;
+                padding: 12px 18px;
+                color: white;
+                font-size: 13px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+            }
+
+            .delete-btn:hover {
+                background: #dc2626;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+            }
+
+            .upload-status {
+                margin-top: 8px;
+                padding: 8px 12px;
+                border-radius: 6px;
+                font-size: 12px;
+                text-align: center;
+            }
+
+            .upload-status.success {
+                background: #f0fdf4;
+                color: #166534;
+                border: 1px solid #bbf7d0;
+            }
+
+            .upload-status.error {
+                background: #fef2f2;
+                color: #dc2626;
+                border: 1px solid #fecaca;
+            }
+
             /* Element Selection Styles */
             body.admin-selecting {
                 cursor: crosshair !important;
             }
-            
+
             body.admin-selecting * {
                 cursor: crosshair !important;
             }
-            
+
             body.admin-selecting *:hover {
                 background-color: rgba(59, 130, 246, 0.1) !important;
                 outline: 2px solid #3b82f6 !important;
                 outline-offset: -2px !important;
                 cursor: crosshair !important;
             }
-            
+
             /* Prevent selection on toolbar elements */
             body.admin-selecting #admin-toolbar,
             body.admin-selecting #admin-toolbar *,
@@ -1486,8 +3029,8 @@ class AdminToolbar {
             /* Status Display */
             .admin-status-display {
                 position: fixed;
-                top: 20px;
-                right: 20px;
+                top: 90px;
+                right: 10px;
                 background: #ffffff;
                 color: #0f172a;
                 padding: 14px 18px;
@@ -1684,69 +3227,199 @@ class AdminToolbar {
                 outline: 2px dashed #3b82f6 !important;
                 outline-offset: 2px !important;
             }
-            
-            /* Edit Button */
-            #admin-toolbar-button {
-                position: fixed;
-                bottom: 21px;
-                right: 29px;
-                z-index: 99999;
-                align-items: center;
-                background: white !important;
-                color: black !important;
-                padding: 10px 24px;
-                border-radius: 12px;
-                font-weight: 600;
-                border: 1px solid #1a1a1a;
-                box-shadow: 
-                    0 8px 24px rgba(0, 0, 0, 0.25),
-                    0 2px 8px rgba(0, 0, 0, 0.15);
-                backdrop-filter: blur(8px);
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-                font-size: 14px;
-                cursor: pointer;
-                transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-                display: flex;
-            }
-            
-            #admin-toolbar-button:hover {
-                background: #ffffff !important;
-                color: #000000 !important;
-                transform: translateY(-1px);
-                box-shadow: 
-                    0 12px 32px rgba(0, 0, 0, 0.3),
-                    0 4px 12px rgba(0, 0, 0, 0.2);
-            }
-            
-            /* Top Div */
-            .admin-top-div {
-                position: fixed;
-                bottom: 15px;
+
+            /* Drag Handle Styles */
+            .admin-drag-handle {
+                position: absolute;
+                top: -32px;
                 left: 50%;
                 transform: translateX(-50%);
-                width: 96%;
-                z-index: 99999;
-                align-items: center;
-                background: #000000;
-                color: #ffffff;
-                padding: 14px 24px;
-                padding-bottom: 35px;
-                padding-top: 20px;
-                border-radius: 12px;
-                font-weight: 600;
-                border: 1px solid #1a1a1a;
-                box-shadow: 
-                    0 8px 24px rgba(0, 0, 0, 0.25),
-                    0 2px 8px rgba(0, 0, 0, 0.15);
-                backdrop-filter: blur(8px);
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-                font-size: 14px;
-                transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+                z-index: 100000;
+                pointer-events: auto;
+            }
+
+            .drag-handle-bar {
+                background: #3b82f6;
+                color: white;
+                padding: 6px 12px;
+                border-radius: 6px;
                 display: flex;
+                align-items: center;
+                gap: 8px;
+                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+                cursor: grab;
+                user-select: none;
+                font-size: 12px;
+                font-weight: 600;
+                white-space: nowrap;
+            }
+
+            .drag-handle-bar:active {
+                cursor: grabbing;
+            }
+
+            .drag-icon {
+                font-size: 14px;
+                font-weight: bold;
+                line-height: 1;
+            }
+
+            .drag-text {
+                font-size: 11px;
+                opacity: 0.9;
+            }
+
+            .save-position-btn {
+                background: white;
+                color: #3b82f6;
+                border: none;
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 12px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
                 justify-content: center;
+            }
+
+            .save-position-btn:hover {
+                background: #f0f9ff;
+                transform: scale(1.05);
+            }
+
+            .save-position-btn:active {
+                transform: scale(0.95);
+            }
+
+            /* Uploaded Image Wrapper */
+            .admin-uploaded-image-wrapper {
+                transition: box-shadow 0.2s ease;
+            }
+
+            .admin-uploaded-image-wrapper:hover {
+                box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+            }
+
+            .admin-uploaded-image {
+                pointer-events: none;
+                user-select: none;
+            }
+
+            .admin-image-resize-handle:hover {
+                background: #2563eb !important;
+                transform: scale(1.1);
+            }
+
+            .admin-image-delete-btn:hover {
+                background: #dc2626 !important;
+                transform: scale(1.1);
+            }
+
+            .admin-image-save-btn:hover {
+                background: #16a34a !important;
+                transform: scale(1.1);
             }
             
             
+            /* Top Div - Floating Dock Design */
+            .admin-top-div {
+                position: fixed;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                z-index: 99999;
+                display: flex;
+                align-items: flex-end;
+                gap: 16px;
+                padding: 12px 16px;
+                background: #f5f5f5;
+                border-radius: 16px;
+                height: 64px;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+                box-shadow: 
+                    0 8px 24px rgba(0, 0, 0, 0.15),
+                    0 2px 8px rgba(0, 0, 0, 0.1);
+                backdrop-filter: blur(12px);
+                transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            }
+            
+            /* Dock Item Base Style */
+            .admin-top-div > * {
+                position: relative;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 40px;
+                height: 40px;
+                background: #e0e0e0;
+                border: none;
+                border-radius: 100%;
+                cursor: pointer;
+                transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+                text-decoration: none;
+                color: #666;
+                font-size: 12px;
+                font-weight: 500;
+                overflow: visible;
+            }
+            
+            .admin-top-div > *:hover {
+                background: #d5d5d5;
+                transform: scale(1.1);
+                border-radius: 100%
+            }
+            
+            /* Button text styling */
+            .admin-top-div button {
+                font-family: inherit;
+                white-space: nowrap;
+                padding: 0 12px;
+                min-width: auto;
+                width: auto;
+                border-radius: 100%;
+            }
+            
+            /* Input styling */
+            .admin-top-div input[type="file"] {
+                display: none;
+            }
+            
+            /* Tooltip for dock items */
+            .admin-top-div > *::before {
+                content: attr(data-tooltip);
+                position: absolute;
+                bottom: calc(100% + 8px);
+                left: 50%;
+                transform: translateX(-50%) translateY(10px);
+                background: #2a2a35;
+                color: #f5f5f5;
+                padding: 4px 8px;
+                border-radius: 6px;
+                font-size: 12px;
+                white-space: nowrap;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.2s ease, transform 0.2s ease;
+                z-index: 100000;
+            }
+            
+            .admin-top-div > *:hover::before {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+            
+            /* Logout button specific styling */
+            #admin-logout-button {
+                background: #ef4444 !important;
+                color: white !important;
+            }
+            
+            #admin-logout-button:hover {
+                background: #dc2626 !important;
+                color: white !important;
+                transform: scale(1.1);
+            }
             
             /* Responsive adjustments */
             @media (max-width: 768px) {
@@ -1766,12 +3439,12 @@ class AdminToolbar {
                 }
             }
         `;
-        
-        document.head.appendChild(style);
-    }
+
+    document.head.appendChild(style);
+  }
 }
 
 // Only create instance if not already created
 if (!window.adminToolbar) {
-    window.adminToolbar = new AdminToolbar();
+  window.adminToolbar = new AdminToolbar();
 }

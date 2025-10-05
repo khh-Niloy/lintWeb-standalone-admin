@@ -152,6 +152,13 @@ class AdminToolbar {
           console.log('📷 Upload image button clicked from dock!');
           uploadInput.click();
         });
+        
+        // Add event listener for file selection
+        uploadInput.addEventListener('change', (e) => {
+          console.log('📷 File selected for upload!');
+          this.handleImageUpload(e);
+        });
+        
         console.log("✅ Added upload functionality to dock button");
       }
       
@@ -181,7 +188,7 @@ class AdminToolbar {
           saveChangesBtn.disabled = true;
           saveChangesBtn.style.cursor = 'not-allowed';
           saveChangesBtn.style.opacity = '0.5';
-          saveChangesBtn.innerHTML = 'Publishing...';
+          saveChangesBtn.innerHTML = 'Saving...';
           
           // Also disable undo button during publish
           const undoBtn = this.topDiv.querySelector('#admin-undo-button');
@@ -192,6 +199,23 @@ class AdminToolbar {
           }
           
           try {
+            // First, save any locked images to HTML
+            const lockedImages = document.querySelectorAll('.admin-uploaded-image-wrapper[data-locked="true"]');
+            if (lockedImages.length > 0) {
+              console.log(`💾 Saving ${lockedImages.length} locked images to HTML...`);
+              saveChangesBtn.innerHTML = 'Saving images...';
+              
+              for (const imageWrapper of lockedImages) {
+                const img = imageWrapper.querySelector('.admin-uploaded-image');
+                const imagePath = imageWrapper.dataset.imagePath;
+                if (img && imagePath) {
+                  await this.saveImageToHTML(imageWrapper, img, imagePath);
+                }
+              }
+            }
+            
+            // Then publish all changes
+            saveChangesBtn.innerHTML = 'Publishing...';
             const response = await fetch('/api/publish', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' }
@@ -238,8 +262,19 @@ class AdminToolbar {
           
           console.log('↶ Undo button clicked from dock!');
           
+          // Count locked images
+          const lockedImages = document.querySelectorAll('.admin-uploaded-image-wrapper[data-locked="true"]');
+          const lockedCount = lockedImages.length;
+          const totalChanges = (window.editCount || 0);
+          
+          let confirmMessage = `Are you sure you want to undo all ${totalChanges} unsaved changes?`;
+          if (lockedCount > 0) {
+            confirmMessage += `\n\nThis includes ${lockedCount} locked image(s) that will be removed from the page.`;
+          }
+          confirmMessage += '\n\nThis cannot be undone.';
+          
           // Confirm with user
-          if (!confirm(`Are you sure you want to undo all ${window.editCount || 0} unsaved changes? This cannot be undone.`)) {
+          if (!confirm(confirmMessage)) {
             return;
           }
           
@@ -248,6 +283,14 @@ class AdminToolbar {
           undoBtn.style.opacity = '0.5';
           
           try {
+            // First, remove any locked images from the page
+            if (lockedImages.length > 0) {
+              console.log(`↶ Removing ${lockedImages.length} locked images...`);
+              lockedImages.forEach(imageWrapper => {
+                imageWrapper.remove();
+              });
+            }
+            
             const response = await fetch('/api/undo', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' }
@@ -465,7 +508,20 @@ class AdminToolbar {
     });
     this.cancelAiBtn.addEventListener("click", () => this.cancelAiEdit());
     this.submitPromptBtn.addEventListener("click", () => this.submitPrompt());
-    this.closeBtn.addEventListener("click", () => this.hide());
+    this.closeBtn.addEventListener("click", () => {
+      console.log('❌ Close button clicked!');
+      // Cancel any ongoing edits without saving
+      if (this.editingIndex >= 0) {
+        if (this.currentEditMode === "text") {
+          this.cancelTextEdit();
+        } else {
+          this.cancelAiEdit();
+        }
+      } else {
+        // Just hide if no active editing
+        this.hide();
+      }
+    });
 
     // Image upload events - add defensive checks
     if (this.uploadBtn) {
@@ -1913,10 +1969,10 @@ class AdminToolbar {
       if (parts.length >= 2 && parts[0].startsWith("user_")) {
         const userDir = parts[0];
         const projectDir = parts[1].replace("/admin", "").replace(".html", "");
-        projectPath = `/Users/admin/Documents/Projects /lintWeb-standalone-admin/projects/${userDir}/${projectDir}`;
+        projectPath = `/Users/mac/Documents/workspace/lint/standalone-admin-server/projects/${userDir}/${projectDir}`;
       } else if (parts.length >= 1 && parts[0]) {
         const projectDir = parts[0].replace("/admin", "").replace(".html", "");
-        projectPath = `/Users/admin/Documents/Projects /lintWeb-standalone-admin/projects/${projectDir}`;
+        projectPath = `/Users/mac/Documents/workspace/lint/standalone-admin-server/projects/${projectDir}`;
       } else {
         this.showStatus("Cannot determine project path from URL", "error");
         return;
@@ -2088,11 +2144,11 @@ class AdminToolbar {
         // Format: /user_xxx/project_name
         const userDir = parts[0];
         const projectDir = parts[1].replace("/admin", "").replace(".html", "");
-        projectPath = `/Users/admin/Documents/Projects /lintWeb-standalone-admin/projects/${userDir}/${projectDir}`;
+        projectPath = `/Users/mac/Documents/workspace/lint/standalone-admin-server/projects/${userDir}/${projectDir}`;
       } else if (parts.length >= 1 && parts[0]) {
         // Format: /project_name
         const projectDir = parts[0].replace("/admin", "").replace(".html", "");
-        projectPath = `/Users/admin/Documents/Projects /lintWeb-standalone-admin/projects/${projectDir}`;
+        projectPath = `/Users/mac/Documents/workspace/lint/standalone-admin-server/projects/${projectDir}`;
       } else {
         this.showStatus("Cannot determine project path from URL", "error");
         return;
@@ -2116,10 +2172,7 @@ class AdminToolbar {
         // Insert image into the page
         this.insertImageIntoPage(result.path, result.filename);
 
-        // Increment edit counter
-        if (window.incrementEditCount) {
-          window.incrementEditCount();
-        }
+        // Note: Edit counter will be incremented only when image is saved to HTML file
       } else {
         this.showStatus(`❌ Upload failed: ${result.error}`, "error");
       }
@@ -2128,7 +2181,9 @@ class AdminToolbar {
       console.error("Upload error:", error);
     } finally {
       // Reset file input
-      this.uploadInput.value = "";
+      if (event.target) {
+        event.target.value = "";
+      }
     }
   }
 
@@ -2169,9 +2224,16 @@ class AdminToolbar {
     const imageWrapper = document.createElement("div");
     imageWrapper.className = "admin-uploaded-image-wrapper";
     imageWrapper.style.position = "absolute";
-    imageWrapper.style.left = "50%";
-    imageWrapper.style.top = "200px";
-    imageWrapper.style.transform = "translateX(-50%)";
+    
+    // Position at current scroll position + center of viewport
+    const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+    const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // Position in center of current viewport
+    imageWrapper.style.left = (scrollX + viewportWidth / 2 - 150) + "px"; // 150px = half of 300px image width
+    imageWrapper.style.top = (scrollY + viewportHeight / 2 - 100) + "px"; // 100px = approximate half of image height
     imageWrapper.style.zIndex = "1000";
     imageWrapper.style.cursor = "move";
 
@@ -2203,26 +2265,26 @@ class AdminToolbar {
     resizeHandle.style.justifyContent = "center";
     resizeHandle.style.fontSize = "14px";
 
-    // Create save button
-    const saveBtn = document.createElement("button");
-    saveBtn.className = "admin-image-save-btn";
-    saveBtn.innerHTML = "💾";
-    saveBtn.title = "Save image to HTML";
-    saveBtn.style.position = "absolute";
-    saveBtn.style.top = "-10px";
-    saveBtn.style.left = "-10px";
-    saveBtn.style.width = "24px";
-    saveBtn.style.height = "24px";
-    saveBtn.style.background = "#22c55e";
-    saveBtn.style.color = "white";
-    saveBtn.style.border = "none";
-    saveBtn.style.borderRadius = "50%";
-    saveBtn.style.cursor = "pointer";
-    saveBtn.style.fontSize = "12px";
-    saveBtn.style.display = "flex";
-    saveBtn.style.alignItems = "center";
-    saveBtn.style.justifyContent = "center";
-    saveBtn.style.boxShadow = "0 2px 4px rgba(0,0,0,0.2)";
+    // Create lock button
+    const lockBtn = document.createElement("button");
+    lockBtn.className = "admin-image-lock-btn";
+    lockBtn.innerHTML = "🔒";
+    lockBtn.title = "Lock image position";
+    lockBtn.style.position = "absolute";
+    lockBtn.style.top = "-10px";
+    lockBtn.style.left = "-10px";
+    lockBtn.style.width = "24px";
+    lockBtn.style.height = "24px";
+    lockBtn.style.background = "#3b82f6";
+    lockBtn.style.color = "white";
+    lockBtn.style.border = "none";
+    lockBtn.style.borderRadius = "50%";
+    lockBtn.style.cursor = "pointer";
+    lockBtn.style.fontSize = "12px";
+    lockBtn.style.display = "flex";
+    lockBtn.style.alignItems = "center";
+    lockBtn.style.justifyContent = "center";
+    lockBtn.style.boxShadow = "0 2px 4px rgba(0,0,0,0.2)";
 
     // Create delete button
     const deleteBtn = document.createElement("button");
@@ -2240,7 +2302,7 @@ class AdminToolbar {
     deleteBtn.style.borderRadius = "50%";
     deleteBtn.style.cursor = "pointer";
     deleteBtn.style.fontSize = "12px";
-    saveBtn.style.display = "flex";
+    deleteBtn.style.display = "flex";
     deleteBtn.style.alignItems = "center";
     deleteBtn.style.justifyContent = "center";
     deleteBtn.style.boxShadow = "0 2px 4px rgba(0,0,0,0.2)";
@@ -2253,7 +2315,7 @@ class AdminToolbar {
     // Append elements
     imageWrapper.appendChild(img);
     imageWrapper.appendChild(resizeHandle);
-    imageWrapper.appendChild(saveBtn);
+    imageWrapper.appendChild(lockBtn);
     imageWrapper.appendChild(deleteBtn);
     document.body.appendChild(imageWrapper);
 
@@ -2267,10 +2329,10 @@ class AdminToolbar {
     // Make resizable
     this.makeResizable(imageWrapper, img, resizeHandle);
 
-    // Save functionality
-    saveBtn.addEventListener("click", (e) => {
+    // Lock functionality
+    lockBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      this.saveImageToHTML(imageWrapper, img, imagePath);
+      this.lockImagePosition(imageWrapper, img, imagePath);
     });
 
     // Delete functionality
@@ -2279,6 +2341,7 @@ class AdminToolbar {
       if (confirm("Remove this image from the page?")) {
         imageWrapper.remove();
         this.showStatus("Image removed from page", "info");
+        // No need to adjust edit counter since upload doesn't increment it
       }
     });
 
@@ -2388,6 +2451,42 @@ class AdminToolbar {
         document.body.style.cursor = "";
       }
     });
+  }
+
+  lockImagePosition(wrapper, img, imagePath) {
+    console.log("🔒 Locking image position:", imagePath);
+    
+    // Find the lock button and update its appearance
+    const lockBtn = wrapper.querySelector('.admin-image-lock-btn');
+    if (lockBtn) {
+      lockBtn.innerHTML = "🔓";
+      lockBtn.title = "Image position locked";
+      lockBtn.style.background = "#10b981";
+      lockBtn.disabled = true;
+      lockBtn.style.cursor = "default";
+      lockBtn.style.opacity = "0.8";
+    }
+    
+    // Remove drag and resize functionality
+    wrapper.style.cursor = "default";
+    const resizeHandle = wrapper.querySelector('.admin-image-resize-handle');
+    if (resizeHandle) {
+      resizeHandle.style.display = "none";
+    }
+    
+    // Change border to solid to indicate locked state
+    wrapper.style.border = "2px solid #10b981";
+    wrapper.style.background = "rgba(16, 185, 129, 0.05)";
+    
+    // Mark as locked in dataset
+    wrapper.dataset.locked = "true";
+    
+    // Increment edit counter to show save/undo buttons
+    if (window.incrementEditCount) {
+      window.incrementEditCount();
+    }
+    
+    this.showStatus("🔒 Image position locked! Use Save Changes to commit to file", "success");
   }
 
   async saveImageToHTML(wrapper, img, imagePath) {

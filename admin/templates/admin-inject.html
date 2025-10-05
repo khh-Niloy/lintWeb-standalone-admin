@@ -1,5 +1,9 @@
 <!-- Admin Toolbar Injection Template -->
 <!-- This script is injected when accessing /admin routes -->
+
+<!-- Load Universal Admin Button for non-admin pages -->
+<script src="/admin-static/universal-admin-button.js"></script>
+
 <script>
   // Authentication Modal
   function showAuthModal() {
@@ -834,10 +838,16 @@
         // Function to show admin UI elements
         window.showAdminUI = function () {
           console.log("🔧 Showing admin UI elements...");
-          logoutButton.style.display = "flex";
-          adminButton.style.display = "flex";
-          uploadImageButton.style.display = "flex";
-          versionDropdown.style.display = "flex";
+          const logoutBtn = document.getElementById("admin-logout-button");
+          const editBtn = document.getElementById("admin-toolbar-button");
+          const uploadBtn = document.getElementById("btn-upload-image");
+          const versionDropdown = document.getElementById("version-history-dropdown");
+          
+          if (logoutBtn) logoutBtn.style.display = "flex";
+          if (editBtn) editBtn.style.display = "flex";
+          if (uploadBtn) uploadBtn.style.display = "flex";
+          if (versionDropdown) versionDropdown.style.display = "flex";
+          
           console.log("✅ Admin UI elements are now visible");
         };
 
@@ -950,6 +960,23 @@
           console.log("🔄 About to call updateSaveChangesButton...");
           window.updateSaveChangesButton();
           console.log("✅ updateSaveChangesButton completed");
+        };
+
+        // Function to decrement edit count and update button
+        window.decrementEditCount = function () {
+          console.log("🚀 decrementEditCount called!");
+          if (window.editCount > 0) {
+            window.editCount--;
+            localStorage.setItem(EDIT_COUNT_KEY, window.editCount.toString());
+            console.log(
+              `📝 Edit count decremented to: ${window.editCount} (saved to storage)`
+            );
+            console.log("🔄 About to call updateSaveChangesButton...");
+            window.updateSaveChangesButton();
+            console.log("✅ updateSaveChangesButton completed");
+          } else {
+            console.log("⚠️ Edit count already at 0, cannot decrement");
+          }
         };
 
         // Function to reset edit count
